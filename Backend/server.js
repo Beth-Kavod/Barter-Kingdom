@@ -1,17 +1,28 @@
 const express = require('express')
 const bodyParser = require('body-parser')
-// const mongoose = require('mongoose')
+const mongoose = require('mongoose')
 const cors = require("cors")
+const cookieParser = require('cookie-parser')
 /* const http = require('http');
 const socketIo = require('socket.io'); */
-const app = express()
-
 require("dotenv").config()
 
+const app = express()
+
+const PORT = process.env.PORT || 4000
+
+const { MONGO_URL_USER, MONGO_URL_BLOG, MONGO_URL_CHAT } = process.env
+
+const postSchema = require('./models/blog/Post')
+
+/* ------------------------------ Server Routes ----------------------------- */
+
+const commentRoute = require('./routes/blog/comment.routes')
+const postRoute = require('./routes/blog/post.routes')
+const voteRoute = require('./routes/blog/vote.routes')
+
+const userRoute = require('./routes/user.routes')
 const MetaMaskAPI = require('./routes/metamaskAPI')
-
-
-const port = process.env.port || 4000
 
 /* --------------------------- cloudinary Config ---------------------------- */
 
@@ -24,19 +35,26 @@ const port = process.env.port || 4000
 
 /* ----------------------------- MongoDB connect ---------------------------- */
 
-/* const mongodbURl = process.env.mongodbURl
+/* const blogDB = mongoose.createConnection(MONGO_URL_BLOG);
 
-mongoose
-  .connect(mongodbURl)
-  .then(x => {
-    console.log(`Connected to Mongo! Database name: "${x.connections[0].name}"`)
-  })
-  .catch(err => {
-    console.error('Error connecting to mongo', err.reason);
-  }) */
+const chatDB = mongoose.createConnection(MONGO_URL_CHAT); */
+
+// blogDB.model(postSchema.modelName, postSchema);
+/* blogDB.once('open', () => {
+  console.log('Connected to Blog MongoDB');
+});
+
+chatDB.once('open', () => {
+  console.log('Connected to Chat MongoDB');
+}); */
+
+mongoose.connect(MONGO_URL_USER)
+.then(x => {
+  console.log(`connected to ${x.connections[0]}`)
+})
 
 /* ----------------------------- Add middleware ----------------------------- */
-
+app.use(cookieParser());
 app.use(cors())
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({
@@ -51,10 +69,10 @@ const io = socketIo(server); */
 
 /* ------------------------------- App routes ------------------------------- */
 
-/* app.use("/posts", postRoute)
+app.use("/posts", postRoute)
 app.use("/users", userRoute)
 app.use("/comments", commentRoute)
-app.use("/votes", voteRoute) */
+app.use("/votes", voteRoute)
 app.use('/metamask', MetaMaskAPI)
 
 
@@ -67,10 +85,10 @@ app.use((err, req, res, next) => {
 
 /* ------------------------------ Start server ------------------------------ */
 
-app.listen(port, () => {
-  console.log(`Server is listening at http://localhost:${port}`);
+app.listen(PORT, () => {
+  console.log(`Server is listening at http://localhost:${PORT}`);
 })
 
-/* server.listen(port, () => {
-  console.log(`Server is listening at http://localhost:${port}`);
+/* server.listen(PORT, () => {
+  console.log(`Server is listening at http://localhost:${PORT}`);
 }) */

@@ -1,14 +1,15 @@
 // import "../assets/css/output.css";
-import Navbar from "../components/Nav";
+import Nav from "../components/Nav";
 import Footer from "../components/Footer";
 import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 
-export default function Home() {
+export default function Home(props) {
+  const { username } = useParams()
   return (
     <>
-      <Navbar />
-      
+      <Nav />
+      <h1>Profile of {username}</h1>
       <Footer />
     </>
   )

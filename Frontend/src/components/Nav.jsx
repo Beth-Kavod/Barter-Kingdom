@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import Web3, { TransactionRevertedWithoutReasonError } from 'web3';
 import axios from 'axios'
 import BKU_ABI from '../../data/BKU-abi.json'
@@ -16,7 +17,11 @@ const Nav = () => {
 
   const connectWallet = () => {
     const loginMetaMask = async () => {
-      if (window.ethereum) {
+      let localWallet = JSON.parse(localStorage.getItem('wallet'))
+
+      if (localWallet) setWallet_Address(localWallet.walletAddress) 
+
+      else if (window.ethereum) {
         try {
           await window.ethereum.request({ method: 'eth_requestAccounts' });
           // Instantiate web3 with the current provider
@@ -26,117 +31,56 @@ const Nav = () => {
           // Listen for changes in the connected accounts
           window.ethereum.on('accountsChanged', (accounts) => {
             setWallet_Address(accounts[0]);
+            localStorage.setItem('wallet', JSON.stringify({ walletAddress: accounts[0] }));
           });
 
-          // Initial set of the wallet address
+          // Initial set of the wallet address to localStorage
           const accounts = await web3Instance.eth.getAccounts();
           setWallet_Address(accounts[0]);
+          localStorage.setItem('wallet', JSON.stringify({ walletAddress: accounts[0] }));
 
           const tokenContractInstance = new web3Instance.eth.Contract(
             BKU_ABI,
             BKU_ADDRESS
           );
-  
+
           setBkuContract(tokenContractInstance);
         } catch (error) {
           console.error('Error connecting to MetaMask:', error);
         }
-      } else {
-        console.warn('MetaMask not found!');
+      } 
+      // if the user is not logged in and does'nt have MetaMask 
+      else {
+        const userWantsToGoToWebsite = window.confirm('MetaMask is required to make an account, \nDo you want to go to the MetaMask website?');
+  
+        if (userWantsToGoToWebsite) window.open('https://metamask.io/download/', '_blank')
       }
-    };
+    }
 
     loginMetaMask();
   }
-
-  /* ------------------------- Add BKU token to wallet ------------------------ */
-
-  const addBKU = async () => {
-    if (window.ethereum) {
-      try {
-        // Request to add BKU token to Metamask
-        await window.ethereum.request({
-          method: 'wallet_watchAsset',
-          params: {
-            type: 'ERC20',
-            options: {
-              address: BKU_ADDRESS,
-              symbol: 'BKU',
-              decimals: 4,
-              image: 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fpiximus.net%2Fmedia2%2F51392%2Fawkward-stock-photos-31.jpg&f=1&nofb=1&ipt=e22ee5eb54220a98ef944a25fa0f288b3694ca9513049cbece389cd68f73b96c&ipo=images',
-            },
-          },
-        });
-
-        console.log('Token added successfully');
-      } catch (error) {
-        console.error('Error adding token:', error);
-      }
-    } else {
-      console.error('Metamask not detected');
-    }
-  }
-
-  /* ---------------------------- Send Transaction ---------------------------- */
-
-  const sendBKU = async (recipientAddress, amount) => {
-    if (!web3 || !bkuContract) {
-      console.error('Web3 or token contract not initialized');
-      return;
-    }
-
-    try {
-      // Converts the amount out of "Grain"
-      // for the time being "Grain" is the name of the smallest denomination
-      amount *= 10000;
-
-      // Call the 'transfer' function of the token contract
-      const transaction = await bkuContract.methods.transfer(recipientAddress, amount).send({
-        from: Wallet_Address,
-      });
-
-      console.log('Token transfer transaction:', transaction);
-    } catch (error) {
-      console.error('Error sending token:', error);
-    }
-  };
-
-  /* ---------------------- Check user ETH & BKU balance ---------------------- */
-
-  const checkBalance = async () => {
-    axios.get(`http://localhost:4000/metamask/get-ETH-balance?address=${Wallet_Address}`)
-    .then(result => {
-      setEthBalance(result.data.ethBalance)
-    })
-
-    axios.get(`http://localhost:4000/metamask/get-BKU-balance?address=${Wallet_Address}`)
-    .then(result => {
-      setBkuBalance(result.data.bkuBalance)
-    })
-  };
-
   /* -------------------------------- Dev LOGS -------------------------------- */
 
-  useEffect(() => {
+  /* useEffect(() => {
     console.log(`ethBalance: ${ethBalance}`)
     console.log(`bkuBalance: ${bkuBalance}`)
     console.log(`Wallet_Address: ${Wallet_Address}`)
     console.log(bkuContract)
-  }, [bkuBalance])
+  }, [bkuBalance]) */
+
+  useEffect(() => {
+    connectWallet()
+    console.log(Wallet_Address)
+  }, [Wallet_Address])
 
   return (
-    <div>
-      <h1>barter Kingdom MetaMask App</h1>
-      <button onClick={connectWallet}>Connect Wallet</button>
-      <button onClick={checkBalance}>Check Wallet Balance</button>
-      <button onClick={addBKU}>Add BKU to Wallet</button>
-      <button onClick={() => sendBKU('0xDB65702A9b26f8a643a31a4c84b9392589e03D7c' //placeholder wallet
-      , 1)}>Send Transaction</button>
-      {web3 ? (
-        <p>Connected to MetaMask! User's address: {Wallet_Address}</p>
-      ) : (
-        <p>MetaMask not detected or not connected.</p>
-      )}
+    <div className="w-screen flex justify-around">
+      <Link to='/'>Home</Link>
+      <Link to='/signup'>Sign Up</Link>
+      <Link to='/login'>Login</Link>
+      <Link to='/Tribes'>Tribes</Link>
+      <Link to='/Profile'>Profile</Link>
+      <button onClick={connectWallet}>connect wallet</button>
     </div>
   );
 };

@@ -4,10 +4,19 @@
     <meta charset="UTF-8" />
     <!-- <link rel="icon" type="image/svg+xml" href="/vite.svg" /> -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.tailwindcss.com"></script>
     <title>Barter Kingdom</title>
+    <style>
+      #root {
+        display: flex;
+        flex-direction: column;
+        height: 100vh; /* 100% of the viewport height */
+        width: 100vw;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root" class="flex justify-between items-center flex-col"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
