@@ -1,61 +1,61 @@
 const express = require('express')
 const bodyParser = require('body-parser')
-const mongoose = require('mongoose')
-const cors = require("cors")
+const cors = require('cors')
 const cookieParser = require('cookie-parser')
+const cloudinary = require('cloudinary')
 /* const http = require('http');
 const socketIo = require('socket.io'); */
-require("dotenv").config()
+require('dotenv').config()
 
 const app = express()
 
 const PORT = process.env.PORT || 4000
 
-const { MONGO_URL_USER, MONGO_URL_BLOG, MONGO_URL_CHAT } = process.env
+const { CLOUD_NAME, API_KEY, SECRET_CLOUDINARY_KEY } = process.env
 
-const postSchema = require('./models/blog/Post')
+const MetaMaskAPI = require('./routes/metamaskAPI')
 
-/* ------------------------------ Server Routes ----------------------------- */
+/* ------------------------------- Blog routes ------------------------------ */
 
 const commentRoute = require('./routes/blog/comment.routes')
 const postRoute = require('./routes/blog/post.routes')
 const voteRoute = require('./routes/blog/vote.routes')
 
+/* ------------------------------- Chat routes ------------------------------ */
+
+/* ------------------------------- User routes ------------------------------ */
+
 const userRoute = require('./routes/user.routes')
-const MetaMaskAPI = require('./routes/metamaskAPI')
 
 /* --------------------------- cloudinary Config ---------------------------- */
 
-/* cloudinary.config({
-  cloud_name: process.env.cloud_name,
-  api_key: process.env.api_key,
-  api_secret: process.env.api_secret,
+cloudinary.config({
+  cloud_name: CLOUD_NAME,
+  api_key: API_KEY,
+  api_secret: SECRET_CLOUDINARY_KEY,
   secure: true,
-}); */
-
-/* ----------------------------- MongoDB connect ---------------------------- */
-
-/* const blogDB = mongoose.createConnection(MONGO_URL_BLOG);
-
-const chatDB = mongoose.createConnection(MONGO_URL_CHAT); */
-
-// blogDB.model(postSchema.modelName, postSchema);
-/* blogDB.once('open', () => {
-  console.log('Connected to Blog MongoDB');
 });
 
-chatDB.once('open', () => {
-  console.log('Connected to Chat MongoDB');
-}); */
+/* ----------------------------- Add middleware ----------------------------- */
 
-mongoose.connect(MONGO_URL_USER)
-.then(x => {
-  console.log(`connected to ${x.connections[0]}`)
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*")
+  res.setHeader("Access-Control-Allow-Methods", "POST, GET, PUT")
+  res.setHeader("Access-Control-Allow-Headers", "content-Type")
+  next()
 })
 
-/* ----------------------------- Add middleware ----------------------------- */
+const corsOptions = {
+  origin: ['http://localhost:3000', 'http://localhost:5173'],
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'httponly', 'Authorization'],
+  credentials: true,
+  methods: ['GET', 'POST'],
+}
+
+
+
+app.use(cors(corsOptions))
 app.use(cookieParser());
-app.use(cors())
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({
   extended : true
@@ -69,10 +69,10 @@ const io = socketIo(server); */
 
 /* ------------------------------- App routes ------------------------------- */
 
-app.use("/posts", postRoute)
-app.use("/users", userRoute)
-app.use("/comments", commentRoute)
-app.use("/votes", voteRoute)
+app.use('/posts', postRoute)
+app.use('/users', userRoute)
+app.use('/comments', commentRoute)
+app.use('/votes', voteRoute)
 app.use('/metamask', MetaMaskAPI)
 
 

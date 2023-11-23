@@ -6,14 +6,10 @@ const filter = require('leo-profanity');
 
 const { isValid_id, getUserWithID } = require("../routeMethods.js")
 
-/* --------------------------- MongodDB Connection -------------------------- */
-
-const blogDB = require('../../connections/chatDB.js')
-
 /* ----------------------------- MongoDB schemas ---------------------------- */
 
-let postSchema = require("../../models/blog/Post.js")
-let commentSchema = require("../../models/blog/Comment.js")
+let Post = require("../../models/blog/Post")
+let Comment = require("../../models/blog/Comment")
 
 // All posts start with /posts
 
@@ -25,9 +21,9 @@ router.get("/user/:username", async (req, res, next) => {
   const PAGE_SIZE = parseInt(req.query.size)
 
   try {
-    const totalResults = await postSchema.countDocuments({ author: username })
+    const totalResults = await Post.countDocuments({ author: username })
 
-    const results = await blogDB.model(postSchema.modelName)
+    const results = await blogDB.model(Post.modelName)
       .find({ author: username })
       .skip((page - 1) * PAGE_SIZE) // Calculate how many documents to skip based on the page number
       .sort({ createdAt: -1 }) // Sort by date
@@ -68,9 +64,9 @@ router.get("/search", async (req, res, next) => {
       ]
     }
 
-    const totalResults = await postSchema.countDocuments(searchQuery)
+    const totalResults = await Post.countDocuments(searchQuery)
 
-    const results = await postSchema
+    const results = await Post
       .find(searchQuery)
       .skip((page - 1) * PAGE_SIZE) // Calculate how many documents to skip based on the page number
       .sort({ createdAt: -1 }) // Sort by _id (or any other field you want to sort by)
@@ -98,7 +94,7 @@ router.post("/create-post", async (req, res, next) => {
   try {
     req.body.content = filter.clean(req.body.content);
     req.body.title = filter.clean(req.body.title);
-    const result = await blogDB.model(postSchema.modelName).create(req.body);
+    const result = await blogDB.model(Post.modelName).create(req.body);
     res.status(201).json({
       data: result,
       message: "Data successfully uploaded",
@@ -114,10 +110,10 @@ router.post("/create-post", async (req, res, next) => {
 router.get("/get-post/:id", async (req, res, next) => {
   const postID = req.params.id
 
-  if (!await isValid_id(res, postID, postSchema)) return false
+  if (!await isValid_id(res, postID, Post)) return false
   
   try {
-    await postSchema
+    await Post
     .findById(postID)
     .then((result) => {
       res.status(200).json({
@@ -140,10 +136,10 @@ router.post("/edit-post/:id", async (req, res, next) => {
 
   const user = await getUserWithID(res, userID)
 
-  if (!await isValid_id(res, postID, postSchema)) return false
+  if (!await isValid_id(res, postID, Post)) return false
 
   try {
-    const post = await postSchema.findById(postID);
+    const post = await Post.findById(postID);
     
     if (user.username !== post.author && !user.admin) {
       res.status(403).json({
@@ -155,7 +151,7 @@ router.post("/edit-post/:id", async (req, res, next) => {
     req.body.content = filter.clean(req.body.content);
     req.body.title = filter.clean(req.body.title);
 
-    await postSchema  
+    await Post  
     .findByIdAndUpdate(postID, req.body, { new: true })
     .then(result => {
       res.status(200).json({
@@ -178,10 +174,10 @@ router.post("/delete-post/:id", async (req, res, next) => {
 
   const user = await getUserWithID(res, userID)
 
-  if (!await isValid_id(res, postID, postSchema)) return false
+  if (!await isValid_id(res, postID, Post)) return false
   
   try {
-    const post = await postSchema.findById(postID)
+    const post = await Post.findById(postID)
 
     if (user.username !== post.author && !user.admin) {
       res.status(403).json({
@@ -191,8 +187,8 @@ router.post("/delete-post/:id", async (req, res, next) => {
     }
 
     const deletePromises = [
-      postSchema.findByIdAndRemove(postID),
-      commentSchema.deleteMany({ postID: postID })
+      Post.findByIdAndRemove(postID),
+      Comment.deleteMany({ postID: postID })
     ]
     
     if (post.imageUrl) {

@@ -4,12 +4,22 @@ import Web3, { TransactionRevertedWithoutReasonError } from 'web3';
 import axios from 'axios'
 import BKU_ABI from '../../data/BKU-abi.json'
 
+import { URL, PORT } from '../../data/URL'
+
 const Nav = () => {
   const [web3, setWeb3] = useState('');
   const [Wallet_Address, setWallet_Address]  = useState('')
   const [ethBalance, setEthBalance] = useState(0)
   const [bkuBalance, setBkuBalance] = useState(0)
   const [bkuContract, setBkuContract] = useState(null)
+
+  const [userAuthID, setUserAuthID] = useState('')
+  const [user, setUser] = useState({
+    username: "",
+    admin: "",
+    avatar: "",
+    createdAt: ""
+  })
 
   const BKU_ADDRESS = '0xE06814AA31667f5e0eFA7A9D86a0c4AC58bdB98d'
 
@@ -59,6 +69,40 @@ const Nav = () => {
 
     loginMetaMask();
   }
+
+  /* ----------------------- Get userAuthID from cookies ---------------------- */
+
+  const getCookies = async () => {
+    const response = await fetch(`${URL}:${PORT}/users/protected`, {
+      method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+        'httpOnly': true
+      },
+      credentials: 'include'
+    })
+  
+    if (!response.ok) {
+      console.log(`Error: ${response.status} - ${response.statusText}`);
+      setUserAuthID('')
+      return false
+    }
+    
+    const data = await response.json()
+  
+    setUserAuthID(data.userAuthID)
+  }
+
+  const getUser = async () => {
+    const userData = await fetch(`${URL}:${PORT}/users/profile/${user.username}?userID=${userAuthID}`)
+    const data = await userData.json()
+
+    setUser(data.user)
+
+    await getCookies()
+
+  }
+
   /* -------------------------------- Dev LOGS -------------------------------- */
 
   /* useEffect(() => {
@@ -68,10 +112,23 @@ const Nav = () => {
     console.log(bkuContract)
   }, [bkuBalance]) */
 
+  const logout = async () => {
+    const response = await fetch(`${URL}:${PORT}/users/logout`, {
+      method: 'GET',
+      headers: {
+
+      },
+      credentials: 'include'
+    })
+    const data = await response.json()
+    console.log(data)
+  }
+
   useEffect(() => {
     connectWallet()
-    console.log(Wallet_Address)
-  }, [Wallet_Address])
+    getUser()
+    console.log(user)
+  }, [])
 
   return (
     <div className="w-screen flex justify-around">
@@ -79,7 +136,9 @@ const Nav = () => {
       <Link to='/signup'>Sign Up</Link>
       <Link to='/login'>Login</Link>
       <Link to='/Tribes'>Tribes</Link>
-      <Link to='/Profile'>Profile</Link>
+      <Link to={`/Profile/${user.username}`}>{user.username} Profile</Link>
+      <button onClick={logout}>Logout</button>
+      {/* <button onClick={getCookies}>Get cookies</button> */}
       <button onClick={connectWallet}>connect wallet</button>
     </div>
   );

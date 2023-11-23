@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import Web3, { TransactionRevertedWithoutReasonError } from 'web3';
 import { URL, PORT } from '../../data/URL.json'
 import Nav from '../components/Nav'
@@ -11,6 +12,7 @@ export default function Signup(props) {
   const [bkuBalance, setBkuBalance] = useState(0)
   const [bkuContract, setBkuContract] = useState(null)
   const [walletAddress, setWalletAddress] = useState('')
+  const navigate = useNavigate()
   // Tribes
   const tribes = [
     "Judah",
@@ -113,7 +115,7 @@ export default function Signup(props) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(user),
+        body: JSON.stringify(user)
       });
   
       if (!response.ok) {
@@ -121,18 +123,14 @@ export default function Signup(props) {
       }
   
       const data = await response.json();
-      console.log(data)
+      console.log(data.message)
+      navigate('/login')
     } catch (error) {
       console.error("Error submitting data:", error);
     }
   };
 
   /* -------------------------------- DEV LOGS -------------------------------- */
-
-  useEffect(() => {
-    console.log(user)
-  }, [user])
-  
   
   return (
     <>

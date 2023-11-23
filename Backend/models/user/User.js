@@ -1,5 +1,9 @@
 const mongoose = require('mongoose')
 const Schema = mongoose.Schema
+const userDB = require('../../connections/userDB')
+require("dotenv").config()
+
+const { MONGO_URL_USER } = process.env
 
 const tribes = [
   "Benjamin",
@@ -19,7 +23,7 @@ const tribes = [
 
 const userSchema = new Schema({
   /* -------------- Undo comments when finished with development -------------- */
-  username: { type: String, required: true },
+  username: { type: String, unique: true, required: true },
   email: { type: String, unique: true, required: false },
   password: { type: String, required: true },
   avatar: { type: String, required: false },
@@ -35,4 +39,10 @@ const userSchema = new Schema({
   timestamps: true 
 })
 
-module.exports = mongoose.model('User', userSchema)
+const User = userDB.model('User', userSchema)
+
+userDB.once('open', () => {
+  console.log('Connected to userDB')
+})
+
+module.exports = User

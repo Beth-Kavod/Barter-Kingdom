@@ -26,14 +26,14 @@ export default function Login() {
     const response = await fetch(`${URL}:${PORT}/users/login`, {
       method: "POST",
       headers: {
-        "Content-Type" : "application/json"
+        "Content-Type" : "application/json",
+        "Accept": "*/*"
       },
-      body: JSON.stringify(userInfo)
+      body: JSON.stringify(userInfo),
+      credentials: 'include'  // Include credentials (cookies)
     })  
     
     const data = await response.json()
-
-    console.log(data)
 
     if (response.status === 403) {
       window.alert('bad stuff, no good for login')

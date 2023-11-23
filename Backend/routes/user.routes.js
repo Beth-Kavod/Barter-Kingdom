@@ -4,16 +4,19 @@ const cloudinary = require('cloudinary')
 const filter = require('leo-profanity');
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
+const { createSecretToken } = require("../util/secretToken")
 require('dotenv').config()
+
 
 const secretKey = process.env.SECRET_KEY
 
 const { getUserWithID } = require('./routeMethods.js')
+
 const availableTags = require('../data/tags')
 
 /* ----------------------------- MongoDB Schemas ---------------------------- */
 
-const userSchema = require('../models/user/User')
+const User = require('../models/user/User')
 
 // All users start with /users
 
@@ -31,7 +34,7 @@ router.get("/", async (req, res, next) => {
 
   try {
 
-    await userSchema
+    await User
       .find()
       .then(users => {
         if (!user.admin) {
@@ -106,7 +109,17 @@ router.post("/create", async (req, res, next) => {
 
     const userAuthID = generateUserAuthID();
 
-    let data = await userSchema.create({
+    // const payload = { userAuthID: userAuthID }
+
+    // const token = createSecretToken(userAuthID)
+
+    /* res.cookie('userAuthID', token, {
+      httpOnly: false, 
+      withCredentials: true,
+      sameSite: 'None' 
+    }) */
+
+    const data = await User.create({
       username: username, 
       email: email,
       password: hashedPassword,
@@ -135,12 +148,12 @@ router.post("/create", async (req, res, next) => {
 
 
 /* ----------------- Send username and password through form ---------------- */
-//! ALL OUTDATED, UPDATE ALL ROUTES
+
 router.post("/login", async (req, res, next) => {
   try {
     const { username, password } = req.body;
-    const user = await userSchema.findOne({username: username})
-    
+    const user = await User.findOne({username: username})
+
     let passwordMatch = false
 
     if (user) {
@@ -149,15 +162,25 @@ router.post("/login", async (req, res, next) => {
 
     if (passwordMatch) {
       // Create a JWT
-      const token = jwt.sign({ userAuthID: user.userAuthID }, secretKey, { expiresIn: '1d' });
+      const payload = { userAuthID: user.userAuthID }
 
-      res.cookie('userAuthID', token, { httpOnly: true });
-      res.json({ success: true });
+      const token = createSecretToken(payload)
+
+      res.cookie('userAuthID', token, {
+        withCredentials: true,
+        httpOnly: true,
+        sameSite: true
+      })
+
+      res.json({ success: true, userAuthID: token })
     } else {
       res.status(403).json({ success: false, message: 'Invalid credentials' });
     }
-  } catch(err) {
-    return next(err)
+  } catch (err) {
+    console.error('Error during login:', err);
+    // Send a generic error response to the client
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+    return false
   }
 })
 
@@ -165,12 +188,21 @@ router.post("/login", async (req, res, next) => {
 
 router.get('/logout', (req, res, next) => {
   try {
+    if (!req.cookies.userAuthID) return res.status(400).json({
+      success: false, 
+      message: 'User not logged in'
+    }) 
 
     res.clearCookie('userAuthID');
+    res.status(200).json({
+      success: true,
+      message: `User logged out`
+    })
 
     res.redirect('/');
   } catch (err) {
     res.status(500).json({
+      success: false,
       message: `Something went wrong logging out`
     })
     return next(err)
@@ -178,23 +210,31 @@ router.get('/logout', (req, res, next) => {
 });
 
 /* ---------------- Verify cookies to check logged in status ---------------- */
-router.get('/protected', (req, res) => {
-  // Check if the user is authenticated
-  const token = req.cookies.userAuthID;
+router.post('/protected', (req, res) => {
+  try {
 
-  if (!token) {
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
-  }
+    // Check if the user is authenticated
+    const token = req.cookies.userAuthID;
 
-  // Verify the JWT
-  jwt.verify(token, secretKey, (err, decoded) => {
-    if (err) {
-      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    if (token === undefined || token === null) {
+      return res.status(400).json({ success: false, message: 'No cookie found' });
     }
 
-    // The JWT is valid, and the user is authenticated
-    res.json({ success: true, userAuthID: decoded.userAuthID });
-  });
+    try {
+      // Verify the JWT
+      const decoded = jwt.verify(token, secretKey);
+      // The JWT is valid, and the user is authenticated
+      res.status(200).json({ success: true, userAuthID: decoded.userAuthID });
+    } catch (err) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: `Something went wrong in retrieving cookies`
+    })
+    return next(err)
+  }
 });
 
 /* ----------------------- Get users profile with name ---------------------- */
@@ -212,7 +252,7 @@ router.get("/profile/:name", async (req, res, next) => {
 
   try {
 
-    await userSchema
+    await User
       .findOne({username: name})
       .then(user => {
         if (!user) return res.status(404).json({ message: `No user found with the username ${name}` })
@@ -221,12 +261,14 @@ router.get("/profile/:name", async (req, res, next) => {
 
         if (request.username === name || request.admin) {
           res.status(200).json({
+            success: true,
             user,
             message: `User ${user.username} found`, 
           })
           return
         } else {
           res.status(200).json({
+            success: true,
             user: {
               username,
               admin, 
@@ -247,19 +289,46 @@ router.get("/profile/:name", async (req, res, next) => {
 
 router.post("/update-avatar", async (req, res, next) => {
   const { username, url } = req.body;
+  const userID = req.query.userID || ""
+  let requestingUser
+
+  function deletePhoto(url) {
+    try {
+      const publicId = url.split('/').pop().split('.')[0]
+      cloudinary.v2.api
+      .delete_resources([
+        `Avatars/${publicId}`], 
+        { type: 'upload', resource_type: 'image' })
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: `Error deleting profile photo`
+      })
+      return false
+    }
+  }
 
   try {
-
-    const user = await userSchema.findOne({ username })
-
-    if (user.avatar) {
-      const publicId = user.avatar.split('/').pop().split('.')[0];
-      cloudinary.v2.api
-        .delete_resources([`Avatars/${publicId}`], 
-          { type: 'upload', resource_type: 'image' })
+    if (!userID) {
+      requestingUser = { username: "guest", id: "", admin: false }
+    } else {
+      requestingUser = await getUserWithID(res, userID)
     }
 
-    await userSchema.findOneAndUpdate(
+    if (requestingUser.username !== username) {
+      res.status(403).json({
+        success: false,
+        message: `User ${requestingUser.username} not allow to update profile photo`
+      })
+      deletePhoto(url)
+      return false
+    }
+
+    const user = await User.findOne({ username })
+
+    if (user.avatar) deletePhoto(user.avatar)
+
+    await User.findOneAndUpdate(
       { username }, 
       { avatar: url }, 
       { new: true }
@@ -272,7 +341,7 @@ router.post("/update-avatar", async (req, res, next) => {
   } catch (err) {
     return next(err);
   }
-});
+})
 
 /* -------------------- Update users profile information -------------------- */
 // ! NOT FINISHED, UPDATING PROFILE NOT USEFUL
@@ -288,12 +357,13 @@ router.post("/update-profile/:name", async (req, res, next) => {
 
     if (name !== user.username && !user.admin) {
       res.status(403).json({
+        success: false,
         message: `User ${name}, not able to edit ${user.username}'s profile`
       })
       return false
     }
 
-    await userSchema
+    await User
       .findOneAndUpdate(
         {username: name}, 
         {email: email},
@@ -303,14 +373,15 @@ router.post("/update-profile/:name", async (req, res, next) => {
         if (!result) return res.status(404).send(`No user found with the username ${user.username}`)
         
         res.status(200).json({
-          message: `User ${result.username} found and updated`, 
-          status: 200
+          success: true,
+          message: `User ${result.username} found and updated`
         })
       }) 
   } catch (err) {
     return next(err)
   }
 })
+// ! NOT FINISHED YET
 
 /* ---------------------------- Add tags to user ---------------------------- */
 
@@ -324,8 +395,9 @@ router.post("/add-tags/:name", async (req, res, next) => {
 
   try {
 
-    if (name !== user.username/*  && !user.admin */) {
+    if (name !== user.username && !user.admin) {
       res.status(403).json({
+        success: false,
         message: `User ${user.username}, not able to edit ${name}'s tags`
       })
       return false
@@ -335,12 +407,13 @@ router.post("/add-tags/:name", async (req, res, next) => {
 
     if (!allTagsIncluded && !user.admin) {
       res.status(403).json({
+        success: false,
         message: `One of [${newTags}] is not an available tag for user ${user.username}`
       })
       return false
     }
 
-    await userSchema
+    await User
       .findOneAndUpdate(
         {username: name},
         { $addToSet: { tags: { $each: newTags } } },
@@ -350,6 +423,7 @@ router.post("/add-tags/:name", async (req, res, next) => {
         if (!result) return res.status(404).send(`No user found with the username ${user.username}`)
         
         res.status(200).json({
+          success: true,
           message: `User ${result.username} found and updated`, 
           added: newTags,
           status: 200
@@ -372,19 +446,20 @@ router.post("/remove-tags/:name", async (req, res, next) => {
 
   try {
 
-    if (name !== user.username && !user.admin) {
+    if (name !== user.username/*  && !user.admin */) {
       res.status(403).json({
+        success: false,
         message: `User ${user.username}, not able to edit ${name}'s tags`
       })
       return false
     }
 
-    await userSchema
+    await User
       .findOne(
         { username: name },
         { new: false }
       )
-      .then(result => {
+      .then(async result => {
         if (!result) {
           return res.status(404).send(`No user found with the username ${user.username}`);
         }
@@ -394,23 +469,24 @@ router.post("/remove-tags/:name", async (req, res, next) => {
 
         if (!tagsExist) {
           res.status(400).json({
+            success: false,
             message: `Not have every tag in [${removeTags}] exist in the user's tags`,
-            removeTags: removeTags,
-            status: 400
+            removeTags: removeTags
           });
           return false
         }
 
-        let updatedUser = userSchema.findOneAndUpdate(
+        let updatedUser = await User.findOneAndUpdate(
           { username: name },
           { $pull: { tags: { $in: removeTags } } },
           { new: true }
         );
 
         res.status(200).json({
+          success: true,
           message: `User ${updatedUser.username} found and updated`,
           removed: removeTags,
-          userTags: updatedUser.tags,
+          updatedTags: updatedUser.tags,
           status: 200
         });
 
@@ -436,6 +512,7 @@ router.post("/make-admin/:id", async (req, res, next) => {
   
   if (req.query.admin === null) {
     res.status(422).json({
+      success: false,
       message: `Admin query needs to be set as boolean`
     })
     return false
@@ -445,6 +522,7 @@ router.post("/make-admin/:id", async (req, res, next) => {
 
   if (!user.admin) {
     res.status(403).json({
+      success: false,
       message: `User with id: ${userID} not allowed to promote users`
     })
     return false
@@ -452,7 +530,7 @@ router.post("/make-admin/:id", async (req, res, next) => {
 
   try {
 
-    await userSchema
+    await User
       .findByIdAndUpdate(
         id, 
         { admin: admin },
@@ -462,6 +540,7 @@ router.post("/make-admin/:id", async (req, res, next) => {
         if (!user) return res.status(404).send(`No user found with the _id: ${id}`)
         let message =  admin ? `User ${user.username} found and given admin` : `User ${user.username} found and revoked admin`
         res.status(200).json({
+          success: true,
           name: user.username, 
           id: user._id, 
           message: message, 
@@ -475,47 +554,44 @@ router.post("/make-admin/:id", async (req, res, next) => {
 
 /* ------------------------------- Delete user ------------------------------ */
 
-//! UPDATE TO NEW DATABASE, NO LONGER USING AWS SERVER 
 router.post("/delete/:userAuthID", async (req, res, next) => {
   const userAuthID = req.params.userAuthID
   const userID = req.query.userID
 
-  let user = await getUserWithID(res, userID)
+  const requestingUser = await getUserWithID(res, userID)
 
-  if (!user.admin) {
+  if (!requestingUser.admin && userID !== userAuthID ) {
     res.status(403).json({
-      message: `User ${user.username} not allowed to delete users`
+      success: false,
+      message: `User ${requestingUser.username} not allowed to delete another user`
     })
   }
 
   try {
-    const response = await fetch("http://54.176.161.136:8080/users/delete", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        applicationId: appId, 
-        ID: userAuthID
+    const response = await User.deleteOne({userAuthID: userAuthID})
+
+    if (response.status === 200) {
+      res.status(200).json({
+        success: true,
+        message: `User ${requestingUser.username} deleted account ${userAuthID}`,
+        mongoDB: response
       })
-    })
-
-    const data = await response.json()
-
-    if (data.status === 200) {
-      await userSchema.deleteOne({userAuthID: userAuthID})
-      res.status(200).json(data)
     } else {
       res.status(500).json({
-        data,
-        message: `Something went wrong`
+        success: false,
+        message: `Something went wrong`,
+        mongoDB: response
       })
     }
   } catch(err) {
-    next(err)
+    res.status(500).json({
+      success: false,
+      message: 'Something went wrong when deleting user'
+    })
+    return next(err)
   }
 })
-//! ^^^^^^^^^^^^^^^^^^^^^^^^^^^ FIX ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 /* -------------------------------------------------------------------------- */
 
 module.exports = router

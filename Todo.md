@@ -1,7 +1,5 @@
 **TODO**
-- Fix user signup and login
-- Fix MongoDB databases to have 3 connections
-- Fix ALL user routes to work with new DB
+- *Fix cookie Auth*
 - Update all Post routes to work AFTER fixing DB connections 
 - make Metamask connection localhost and disconnect 
 - make chat app
@@ -23,4 +21,7 @@
 - Zebulon - Chrysoprase - #61CC97
 
 **Updates**
+- Fixed ALL user routes to work with new DB
+- Fixed user signup and login
 - Made tribe Ephod
+- Fixed MongoDB to have 3 databases connections

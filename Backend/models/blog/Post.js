@@ -1,5 +1,8 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema
+const blogDB = require('../../connections/blogDB')
+require('dotenv').config()
+
 
 let postSchema = new Schema({
     author: { type: String, required: true}, 
@@ -14,4 +17,11 @@ let postSchema = new Schema({
     timestamps: true
 })
 
-module.exports = mongoose.model('Post', postSchema)
+const Post = blogDB.model('Post', postSchema)
+
+blogDB.once('open', () => {
+    console.log('Connected to blogDB')
+})
+
+
+module.exports = Post

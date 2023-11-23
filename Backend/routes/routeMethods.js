@@ -1,8 +1,8 @@
 /* ----------------------------- MongoDB Schemas ---------------------------- */
 
-const postSchema = require('../models/blog/Post')
-const commentSchema = require('../models/blog/Comment')
-const userSchema = require('../models/user/User')
+const Post = require('../models/blog/Post')
+const Comment = require('../models/blog/Comment')
+const User = require('../models/user/User')
 
 /* ------------------------------- Count votes ------------------------------ */
 
@@ -30,22 +30,12 @@ async function isDuplicate(req, res, id, author) {
 
     let newVote = { author, vote }
 
-    const existingVoteInPost = await postSchema.findOne(
-      { 
-        _id: id, 
-        "votes.author": author 
-      }
-    )
+    const existingVoteInPost = await Post.findOne({ _id: id, "votes.author": author })
 
-    const existingVoteInComment = await commentSchema.findOne(
-      { 
-        _id: id, 
-        "votes.author": author 
-      }
-    )
+    const existingVoteInComment = await Comment.findOne({ _id: id, "votes.author": author })
 
     if (existingVoteInPost) {      
-      updatedDoc = await postSchema.findOneAndUpdate(
+      updatedDoc = await Post.findOneAndUpdate(
         { _id: id, "votes.author": author },
         {
           $set: {
@@ -55,11 +45,13 @@ async function isDuplicate(req, res, id, author) {
         {
           new: true,
         }
-      );
+      )
+
       updatedDoc.voteCount = countVotes(updatedDoc.votes);
       await updatedDoc.save()
+      
     } else if (existingVoteInComment) {
-      updatedDoc = await commentSchema.findOneAndUpdate(
+      updatedDoc = await Comment.findOneAndUpdate(
         { _id: id, "votes.author": author },
         {
           $set: {
@@ -119,7 +111,7 @@ async function isValid_id(res, id, schema) {
 
 async function getUserWithID(res, userID) {
   try {
-    const user = await userSchema.findOne({ userAuthID: userID })
+    const user = await User.findOne({ userAuthID: userID })
     if (!user) throw new Error
     return user
   }
