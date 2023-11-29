@@ -3,8 +3,6 @@ const Schema = mongoose.Schema
 const userDB = require('../../connections/userDB')
 require("dotenv").config()
 
-const { MONGO_URL_USER } = process.env
-
 const tribes = [
   "Benjamin",
   "Joseph",
@@ -23,9 +21,9 @@ const tribes = [
 
 const userSchema = new Schema({
   /* -------------- Undo comments when finished with development -------------- */
-  username: { type: String, unique: true, required: true },
-  email: { type: String, unique: true, required: false },
+  username: { type: String, unique: true, required: true, trim: true },
   password: { type: String, required: true },
+  email: { type: String, unique: true, required: false, default: "" },
   avatar: { type: String, required: false },
   tags: { type: Array, required: false },
   bio: { type: String, required: false },

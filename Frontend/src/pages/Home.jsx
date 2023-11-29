@@ -4,12 +4,12 @@ import Footer from "../components/Footer";
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { URL, PORT } from '../../data/URL'
-export default function Home() {
+export default function Home({ user }) {
 
   
   return (
     <>
-      <Nav />
+      <Nav user={user} />
       <div>
         <h1 className="text-center">Home</h1>
         {/* <button onClick={getCookie}>Get cookie</button> */}

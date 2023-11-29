@@ -4,19 +4,19 @@ const cloudinary = require('cloudinary')
 const filter = require('leo-profanity');
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
-const { createSecretToken } = require("../util/secretToken")
+const { createSecretToken } = require("../../util/secretToken.js")
 require('dotenv').config()
 
 
 const secretKey = process.env.SECRET_KEY
 
-const { getUserWithID } = require('./routeMethods.js')
+const { getUserWithID, hashPassword, generateUserAuthID } = require('../routeMethods.js')
 
-const availableTags = require('../data/tags')
+const availableTags = require('../../data/tags')
 
 /* ----------------------------- MongoDB Schemas ---------------------------- */
 
-const User = require('../models/user/User')
+const User = require('../../models/user/User.js')
 
 // All users start with /users
 
@@ -33,7 +33,6 @@ router.get("/", async (req, res, next) => {
   }
 
   try {
-
     await User
       .find()
       .then(users => {
@@ -41,87 +40,112 @@ router.get("/", async (req, res, next) => {
           const usernames = users.map((user) => user.username);
   
           res.status(200).json({
-            users: usernames,
+            success: true,
             message: `All ${usernames.length} users found`,
             userCount: usernames.length,
-            status: 200,
+            users: usernames
           });
         } else {
           // If the user is an admin, include all user data in the response
           res.status(200).json({
-            users: users,
+            success: true,
             message: `All ${users.length} users found`,
             userCount: users.length,
-            status: 200,
+            users: users
           });
         }
       })
   } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: `An error occurred fetching all users`,
+      error: err.message
+    })
+    return next(err)
+  }
+})
+
+/* ------------------------------ Search users ------------------------------ */
+
+router.get("/search/:query", async (req, res, next) => {
+  const query = req.params.query
+  const userID = req.query.userID
+  let user
+
+  const regexQuery = new RegExp(query, 'i')
+
+  if (!userID) {
+    user = { username: "newUser", id: "", admin: false }
+  } else {
+    user = await getUserWithID(res, userID)
+  }
+
+  try {
+    await User
+      .find({
+        $or: [
+          { username: { $regex: regexQuery }},
+          { bio: { $regex: regexQuery }},
+          { tribe: { $regex: regexQuery }},
+          { tags: { $elemMatch: { $regex: regexQuery }}}
+        ]
+      })
+      .then(users => {
+        if (!user.admin) {
+          const usernames = users.map((user) => user.username);
+
+          let message = usernames.length > 0 ? 
+            `All ${usernames.length} users found with query "${query}"` 
+            : 
+            `No users found from query "${query}"`
+  
+          res.status(200).json({
+            success: true,
+            message: message,
+            userCount: usernames.length,
+            users: usernames
+          })
+
+          return 
+        } else {
+          // If the user is an admin, include all user data in the response
+          console.log(user)
+          res.status(200).json({
+            success: true,
+            message: message,
+            userCount: users.length,
+            users: users
+          })
+        }
+      })
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: `An error occurred fetching users with query "${query}"`,
+      error: err.message
+    })
     return next(err)
   }
 })
 
 /* ----------------- Send username and password through form ---------------- */
-
-router.post("/create", async (req, res, next) => {
+//! MOVED TO AUTH
+/* router.post("/create", async (req, res, next) => {
   let {username, password, email, tribe, walletAddress } = req.body
   let hashedPassword 
 
   try {
-
-    async function hashPassword(password) {
-      try {
-        // Generate a salt
-        const salt = await bcrypt.genSalt(10);
-    
-        // Hash the password using the generated salt
-        const hashedPassword = await bcrypt.hash(password, salt);
-    
-        return hashedPassword;
-      } catch (error) {
-        throw error;
-      }
-    }
-    
     try {
       hashedPassword = await hashPassword(password);
     } catch (error) {
       console.error('Error hashing password', error);
     }
 
-    function generateUserAuthID() {
-      const getRandomChar = () => {
-        const characters = '0123456789ABCDEF';
-        const randomIndex = Math.floor(Math.random() * characters.length);
-        return characters[randomIndex];
-      };
-
-      const generateBlock = () => {
-        let block = '';
-        for (let i = 0; i < 6; i++) {
-          block += getRandomChar();
-        }
-        return block;
-      };
-
-      return `${generateBlock()}-${generateBlock()}-${generateBlock()}-${generateBlock()}-${generateBlock()}`;
-    }
-
     const userAuthID = generateUserAuthID();
-
-    // const payload = { userAuthID: userAuthID }
-
-    // const token = createSecretToken(userAuthID)
-
-    /* res.cookie('userAuthID', token, {
-      httpOnly: false, 
-      withCredentials: true,
-      sameSite: 'None' 
-    }) */
 
     const data = await User.create({
       username: username, 
-      email: email,
+      email: email || "",
       password: hashedPassword,
       userAuthID: userAuthID, 
       walletAddress: walletAddress,
@@ -132,7 +156,8 @@ router.post("/create", async (req, res, next) => {
     })
     
     res.status(201).json({
-      message: `Creation of user ${username} successful`,
+      success: true,
+      message: `Creation of user "${username}" successful`,
       user: data
     })
 
@@ -140,19 +165,22 @@ router.post("/create", async (req, res, next) => {
 
   } catch(err) {
     res.status(500).json({
-      message: `Something went wrong creating user ${username}`
-    }) 
+      success: false,
+      message: `An error occurred creating user`,
+      error: err.message
+    })
     return next(err)
   }
-})
+}) */
 
 
 /* ----------------- Send username and password through form ---------------- */
-
-router.post("/login", async (req, res, next) => {
+//! MOVED TO AUTH
+/* router.post("/login", async (req, res, next) => {
+  let { username, password } = req.body
+  
   try {
-    const { username, password } = req.body;
-    const user = await User.findOne({username: username})
+    const user = await User.findOne({ username: username })
 
     let passwordMatch = false
 
@@ -162,38 +190,52 @@ router.post("/login", async (req, res, next) => {
 
     if (passwordMatch) {
       // Create a JWT
-      const payload = { userAuthID: user.userAuthID }
+      try {
+        const payload = { userAuthID: user.userAuthID }
+        
+        const token = createSecretToken(payload)
 
-      const token = createSecretToken(payload)
+        res.cookie('userAuthID', token, {
+          withCredentials: true,
+          httpOnly: true,
+          sameSite: true
+        })
 
-      res.cookie('userAuthID', token, {
-        withCredentials: true,
-        httpOnly: true,
-        sameSite: true
-      })
-
-      res.json({ success: true, userAuthID: token })
+        res.status(200).json({ 
+          success: true, 
+          message: `User "${user.username}" successfully logged in`,
+          userAuthID: token 
+        })
+        
+      } catch(err) {
+        throw new Error("Error signing the token")
+      }
     } else {
-      res.status(403).json({ success: false, message: 'Invalid credentials' });
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Invalid credentials' 
+      })
     }
   } catch (err) {
-    console.error('Error during login:', err);
-    // Send a generic error response to the client
-    res.status(500).json({ success: false, message: 'Internal Server Error' });
-    return false
+    res.status(500).json({
+      success: false,
+      message: `An error occurred logging in "${username}"`,
+      error: err.message
+    })
+    return next(err)
   }
-})
+})*/
 
 /* ------------------- Logout of account and delete cookie ------------------ */
-
-router.get('/logout', (req, res, next) => {
+//! MOVED TO AUTH
+/* router.get('/logout', (req, res, next) => {
   try {
     if (!req.cookies.userAuthID) return res.status(400).json({
       success: false, 
       message: 'User not logged in'
     }) 
 
-    res.clearCookie('userAuthID');
+    res.clearCookie('userAuthID')
     res.status(200).json({
       success: true,
       message: `User logged out`
@@ -203,19 +245,20 @@ router.get('/logout', (req, res, next) => {
   } catch (err) {
     res.status(500).json({
       success: false,
-      message: `Something went wrong logging out`
+      message: `Something went wrong logging out`,
+      error: err.message
     })
     return next(err)
   }
-});
+}); */
 
 /* ---------------- Verify cookies to check logged in status ---------------- */
-router.post('/protected', (req, res) => {
+//! MOVED TO AUTH
+/* router.post('/protected', (req, res) => {
   try {
-
-    // Check if the user is authenticated
     const token = req.cookies.userAuthID;
-
+    
+    // Check if the user is authenticated
     if (token === undefined || token === null) {
       return res.status(400).json({ success: false, message: 'No cookie found' });
     }
@@ -224,18 +267,27 @@ router.post('/protected', (req, res) => {
       // Verify the JWT
       const decoded = jwt.verify(token, secretKey);
       // The JWT is valid, and the user is authenticated
-      res.status(200).json({ success: true, userAuthID: decoded.userAuthID });
+      res.status(200).json({ 
+        success: true, 
+        message: `User authenticated`,
+        userAuthID: decoded.userAuthID 
+      });
     } catch (err) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Unauthorized', 
+        error: err.message
+      });
     }
   } catch (err) {
     res.status(500).json({
       success: false,
-      message: `Something went wrong in retrieving cookies`
+      message: `Something went wrong in retrieving cookies`,
+      error: err.message
     })
     return next(err)
   }
-});
+}); */
 
 /* ----------------------- Get users profile with name ---------------------- */
 
@@ -251,36 +303,43 @@ router.get("/profile/:name", async (req, res, next) => {
   }
 
   try {
-
     await User
       .findOne({username: name})
       .then(user => {
-        if (!user) return res.status(404).json({ message: `No user found with the username ${name}` })
-        
+        if (!user) {
+          return res.status(404).json({
+            success: false,
+            message: `No user found with the username ${name}`
+          })
+        }
+
         const { username, admin, avatar, createdAt } = user
 
         if (request.username === name || request.admin) {
-          res.status(200).json({
+          return res.status(200).json({
             success: true,
-            user,
-            message: `User ${user.username} found`, 
+            message: `User ${user.username} found`,
+            user
           })
-          return
         } else {
-          res.status(200).json({
+          return res.status(200).json({
             success: true,
+            message: `User ${user.username} found`, 
             user: {
               username,
               admin, 
               avatar, 
               createdAt,
             },
-            message: `User ${user.username} found`, 
           })
-          return
         }
       }) 
   } catch(err) {
+    res.status(500).json({
+      success: false,
+      message: `An error occurred fetching "${username}"'s profile`,
+      error: err.message
+    })
     return next(err)
   }
 })
@@ -300,11 +359,11 @@ router.post("/update-avatar", async (req, res, next) => {
         `Avatars/${publicId}`], 
         { type: 'upload', resource_type: 'image' })
     } catch (err) {
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
-        message: `Error deleting profile photo`
+        message: `Error deleting profile photo`,
+        error: err.message
       })
-      return false
     }
   }
 
@@ -335,10 +394,15 @@ router.post("/update-avatar", async (req, res, next) => {
     )
 
     res.status(201).json({
-      message: `${username}'s avatar was updated.`,
-      status: 201
+      success: true,
+      message: `${username}'s avatar was updated.`
     });
   } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: `An error occurred updating "${username}"'s avatar`,
+      error: err.message
+    })
     return next(err);
   }
 })
@@ -378,6 +442,11 @@ router.post("/update-profile/:name", async (req, res, next) => {
         })
       }) 
   } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: `An error occurred updating "${name}"'s profile`,
+      error: err.message
+    })
     return next(err)
   }
 })
@@ -394,23 +463,20 @@ router.post("/add-tags/:name", async (req, res, next) => {
   const user = await getUserWithID(res, userID)
 
   try {
-
     if (name !== user.username && !user.admin) {
-      res.status(403).json({
+      return res.status(403).json({
         success: false,
         message: `User ${user.username}, not able to edit ${name}'s tags`
       })
-      return false
     }
 
     const allTagsIncluded = newTags.every(tag => availableTags.includes(tag));
 
     if (!allTagsIncluded && !user.admin) {
-      res.status(403).json({
+      return res.status(403).json({
         success: false,
         message: `One of [${newTags}] is not an available tag for user ${user.username}`
       })
-      return false
     }
 
     await User
@@ -425,11 +491,15 @@ router.post("/add-tags/:name", async (req, res, next) => {
         res.status(200).json({
           success: true,
           message: `User ${result.username} found and updated`, 
-          added: newTags,
-          status: 200
+          added: newTags
         })
       }) 
   } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: `An error occurred adding tags to user "${username}"`,
+      error: err.message
+    })
     return next(err)
   }
 })
@@ -445,13 +515,11 @@ router.post("/remove-tags/:name", async (req, res, next) => {
   const user = await getUserWithID(res, userID)
 
   try {
-
-    if (name !== user.username/*  && !user.admin */) {
-      res.status(403).json({
+    if (name !== user.username && !user.admin) {
+      return res.status(403).json({
         success: false,
         message: `User ${user.username}, not able to edit ${name}'s tags`
       })
-      return false
     }
 
     await User
@@ -461,19 +529,21 @@ router.post("/remove-tags/:name", async (req, res, next) => {
       )
       .then(async result => {
         if (!result) {
-          return res.status(404).send(`No user found with the username ${user.username}`);
+          return res.status(404).json({
+            success: false,
+            message: `No user found with the username ${user.username}`
+          });
         }
 
         // Check if all tags in removeTags exist in the tags array
         const tagsExist = removeTags.every(tag => result.tags.includes(tag));
 
         if (!tagsExist) {
-          res.status(400).json({
+          return res.status(400).json({
             success: false,
             message: `Not have every tag in [${removeTags}] exist in the user's tags`,
             removeTags: removeTags
-          });
-          return false
+          })
         }
 
         let updatedUser = await User.findOneAndUpdate(
@@ -486,13 +556,15 @@ router.post("/remove-tags/:name", async (req, res, next) => {
           success: true,
           message: `User ${updatedUser.username} found and updated`,
           removed: removeTags,
-          updatedTags: updatedUser.tags,
-          status: 200
-        });
-
-        return true
+          updatedTags: updatedUser.tags
+        })
       })
   } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: `An error occurred removing tags from user "${username}"`,
+      error: err.message
+    })
     return next(err)
   }
 })
@@ -511,21 +583,19 @@ router.post("/make-admin/:id", async (req, res, next) => {
   const admin = adminMapping[req.query.admin] || null;
   
   if (req.query.admin === null) {
-    res.status(422).json({
+    return res.status(422).json({
       success: false,
       message: `Admin query needs to be set as boolean`
     })
-    return false
   }
 
   let user = await getUserWithID(res, userID)
 
   if (!user.admin) {
-    res.status(403).json({
+    return res.status(403).json({
       success: false,
       message: `User with id: ${userID} not allowed to promote users`
     })
-    return false
   }
 
   try {
@@ -538,16 +608,21 @@ router.post("/make-admin/:id", async (req, res, next) => {
       )
       .then(user => {
         if (!user) return res.status(404).send(`No user found with the _id: ${id}`)
+
         let message =  admin ? `User ${user.username} found and given admin` : `User ${user.username} found and revoked admin`
         res.status(200).json({
           success: true,
           name: user.username, 
           id: user._id, 
-          message: message, 
-          status: 200
+          message: message
         })
       }) 
   } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: `An error occurred changing user "${username}"'s admin status`,
+      error: err.message
+    })
     return next(err)
   }
 })
@@ -561,7 +636,7 @@ router.post("/delete/:userAuthID", async (req, res, next) => {
   const requestingUser = await getUserWithID(res, userID)
 
   if (!requestingUser.admin && userID !== userAuthID ) {
-    res.status(403).json({
+    return res.status(403).json({
       success: false,
       message: `User ${requestingUser.username} not allowed to delete another user`
     })
@@ -571,22 +646,23 @@ router.post("/delete/:userAuthID", async (req, res, next) => {
     const response = await User.deleteOne({userAuthID: userAuthID})
 
     if (response.status === 200) {
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         message: `User ${requestingUser.username} deleted account ${userAuthID}`,
         mongoDB: response
       })
     } else {
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
-        message: `Something went wrong`,
+        message: `Something went wrong deleting user`,
         mongoDB: response
       })
     }
   } catch(err) {
     res.status(500).json({
       success: false,
-      message: 'Something went wrong when deleting user'
+      message: 'Something went wrong when deleting user',
+      error: err.message
     })
     return next(err)
   }

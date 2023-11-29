@@ -32,16 +32,21 @@ router.get("/user/:username", async (req, res, next) => {
     let message = results.length === 0 ? 'No posts found from search' : 'Search results successfully fetched';
 
     res.status(200).json({
+      success: true,
+      message: message,
       data: results,
       count: results.length,
       currentPage: page,
       totalPosts: totalResults,
-      totalPages: Math.ceil(totalResults / PAGE_SIZE),
-      message: message,
-      status: 200,
+      totalPages: Math.ceil(totalResults / PAGE_SIZE)
     })
   } catch (err) {
-    next(err)
+    res.status(500).json({
+      success: false,
+      message: `An error occurred fetching "${username}"'s Posts`,
+      error: err
+    })
+    return next(err)
   }
 });
 
@@ -53,14 +58,14 @@ router.get("/search", async (req, res, next) => {
   
   let query = req.query.query
   query = query === null ? "" : query
-  const regex = new RegExp(query, 'i')
+  const regexQuery = new RegExp(query, 'i')
   
   try {PAGE_SIZE
     const searchQuery = {
       $or: [
-        { title: { $regex: regex } },
-        { content: { $regex: regex } },
-        { author: { $regex: regex } }
+        { title: { $regex: regexQuery } },
+        { content: { $regex: regexQuery } },
+        { author: { $regex: regexQuery } }
       ]
     }
 
@@ -75,15 +80,20 @@ router.get("/search", async (req, res, next) => {
     let message = results.length === 0 ? 'No posts found from search' : 'Search results successfully fetched';
 
     res.status(200).json({
+      success: true,
+      message: message,
       data: results,
       count: results.length,
       currentPage: page,
       totalPosts: totalResults,
-      totalPages: Math.ceil(totalResults / PAGE_SIZE),
-      message: message,
-      status: 200,
+      totalPages: Math.ceil(totalResults / PAGE_SIZE)
     })
   } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: `An error occurred fetching posts with search query "${query}"`,
+      error: err
+    })
     return next(err)
   }
 })
@@ -94,13 +104,18 @@ router.post("/create-post", async (req, res, next) => {
   try {
     req.body.content = filter.clean(req.body.content);
     req.body.title = filter.clean(req.body.title);
-    const result = await blogDB.model(Post.modelName).create(req.body);
+    const result = await Post.create(req.body);
     res.status(201).json({
-      data: result,
+      success: true,
       message: "Data successfully uploaded",
-      status: 200,
+      data: result
     })
   } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: `An error occurred creating "${req.body.author}"'s Post`,
+      error: err
+    })
     return next(err)
   }
 })
@@ -117,14 +132,19 @@ router.get("/get-post/:id", async (req, res, next) => {
     .findById(postID)
     .then((result) => {
       res.status(200).json({
-        data: result,
-        voteCount: result.voteCount,
+        success: true,
         message: "Post successfully fetched",
-        status: 200,
+        voteCount: result.voteCount,
+        data: result,
       })
     })
   } catch(err) {
-      return next(err)
+    res.status(500).json({
+      success: false,
+      message: `An error occurred fetching post with _id: "${postID}"`,
+      error: err
+    })
+    return next(err)
   }
 })
 
@@ -142,10 +162,9 @@ router.post("/edit-post/:id", async (req, res, next) => {
     const post = await Post.findById(postID);
     
     if (user.username !== post.author && !user.admin) {
-      res.status(403).json({
+      return res.status(403).json({
         message: `User ${user.username} not authorized to edit ${post.author}'s post`
       })
-      return false
     }
 
     req.body.content = filter.clean(req.body.content);
@@ -155,13 +174,18 @@ router.post("/edit-post/:id", async (req, res, next) => {
     .findByIdAndUpdate(postID, req.body, { new: true })
     .then(result => {
       res.status(200).json({
-        data: result, 
-        voteCount: result.voteCount,
+        success: true,
         message: "Data successfully updated",
-        status: 200
+        voteCount: result.voteCount,
+        data: result
       })
     })
   } catch(err) {
+    res.status(500).json({
+      success: false,
+      message: `An error occurred editing post with _id: "${postID}"`,
+      error: err
+    })
     return next(err)
   }
 })
@@ -180,10 +204,9 @@ router.post("/delete-post/:id", async (req, res, next) => {
     const post = await Post.findById(postID)
 
     if (user.username !== post.author && !user.admin) {
-      res.status(403).json({
+      return res.status(403).json({
         message: `User ${user.username} not authorized to delete ${post.author}'s post`
       })
-      return false
     }
 
     const deletePromises = [
@@ -202,9 +225,15 @@ router.post("/delete-post/:id", async (req, res, next) => {
     await Promise.all(deletePromises)
 
     res.status(200).json({
-      message: `All info related to post: ${postID} has been deleted`,
+      success: true,
+      message: `All info related to post: "${postID}" has been deleted`,
     })
   } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: `An error occurred editing post with _id: "${postID}"`,
+      error: err
+    })
     return next(err)
   }
 })

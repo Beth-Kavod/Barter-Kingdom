@@ -3,14 +3,10 @@ const router = express.Router()
 
 let { getUserWithID, countVotes, isValid_id, isDuplicate } = require("../routeMethods.js")
 
-/* --------------------------- MongodDB Connection -------------------------- */
-
-const blogDB = require('../../connections/blogDB')
-
 /* ----------------------------- MongoDB Schemas ---------------------------- */
 
-let postSchema = require("../../models/blog/Post.js")
-let commentSchema = require("../../models/blog/Comment.js")
+let Post = require("../../models/blog/Post.js")
+let Comment = require("../../models/blog/Comment.js")
 
 // All votes start with /votes
 
@@ -22,7 +18,7 @@ router.post("/post/:id", async (req, res, next) => {
 
   const { author, vote } = req.body
 
-  if (!(await isValid_id(res, postID, postSchema))) return false
+  if (!(await isValid_id(res, postID, Post))) return false
   if (await isDuplicate(req, res, postID, author)) return true
 
   const user = await getUserWithID(res, userID);
@@ -36,15 +32,13 @@ router.post("/post/:id", async (req, res, next) => {
       return false
     }
 
-    const newVote = { author, vote }
+    const originalPost = await Post.findById(postID);
 
-    const originalPost = await postSchema.findById(postID);
-
-    const updatedPost = await postSchema.findByIdAndUpdate(
+    const updatedPost = await Post.findByIdAndUpdate(
       postID,
       { 
-        $push: { votes: newVote },
-        $set: { voteCount: countVotes([...originalPost.votes, newVote]) }
+        $push: { votes: { author, vote } },
+        $set: { voteCount: countVotes([...originalPost.votes, { author, vote }]) }
       },
       { new: true }
     )
@@ -70,7 +64,7 @@ router.post("/comment/:id", async (req, res, next) => {
 
   let { author, vote } = req.body
 
-  if (!await isValid_id(res, commentID, commentSchema)) return false;
+  if (!await isValid_id(res, commentID, Comment)) return false;
   if (await isDuplicate(req, res, commentID, author)) return true;
 
   const user = await getUserWithID(res, userID)
@@ -86,9 +80,9 @@ router.post("/comment/:id", async (req, res, next) => {
 
     const newVote = { author, vote }
 
-    const originalComment = await commentSchema.findById(commentID);
+    const originalComment = await Comment.findById(commentID);
 
-    const updatedComment = await commentSchema.findByIdAndUpdate(
+    const updatedComment = await Comment.findByIdAndUpdate(
       commentID,
       { 
         $push: { votes: newVote },

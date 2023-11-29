@@ -5,42 +5,21 @@ import { useState, useEffect } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { URL, PORT } from '../../data/URL'
 
-export default function Profile(props) {
-  const [userAuthID, setUserAuthID] = useState('')
+export default function Profile({user}) {
   const { username } = useParams()
-  const [avatar, setAvatar] = useState('')
-  const [user, setUser] = useState(props.user)
+  const [userProfile, setUserProfile] = useState()
+  // const [avatar, setAvatar] = useState(user.avatar)
+  const [userAuthID, setUserAuthID] = useState()
+  console.log(user)
+  /* ------------------------------ Get user data ----------------------------- */
 
-  /* const getCookies = async () => {
-    const response = await fetch(`${URL}:${PORT}/users/protected`, {
-      method: "POST",
-      headers: {
-        'Content-Type': 'application/json',
-        'httpOnly': true
-      },
-      credentials: 'include'
-    })
-  
-    if (!response.ok) {
-      console.log(`Error: ${response.status} - ${response.statusText}`);
-      setUserAuthID('')
-      return false
-    }
-    
-    const data = await response.json()
-  
-    setUserAuthID(data.userAuthID)
-  } */
+  const getUser = async () => {                                //! TEMP NAME     
+    const userData = await fetch(`${URL}:${PORT}/users/profile/${username}/* ?userID=${userAuthID} */`)
+    const data = await userData.json()
 
-  /* const getUser = async () => {
-    const user = await fetch(`${URL}:${PORT}/users/profile/${username}?userID=${userAuthID}`)
-    const data = await user.json()
+    setUserProfile(data.user)
 
-    setUser(data.user)
-
-    await getCookies()
-
-  } */
+  }
 
   const updateAvatar = async (event) => {
     const imageFile = event.target.files[0];
@@ -49,7 +28,7 @@ export default function Profile(props) {
     formData.append("upload_preset", "Avatar");
 
     // ! ADD FILE NAME LATER
-    const customFileName = `${user.username}-${Date.now().toString}-${user.createdAt}`
+    // const customFileName = `${user.username}-${Date.now().toString}-${user.createdAt}`
 
     const response = await fetch(
         `https://api.cloudinary.com/v1_1/djez6nvh7/image/upload/`,
@@ -69,7 +48,7 @@ export default function Profile(props) {
         setAvatar(url);
 
         // Update avatar in the backend mongo-db
-        fetch(`http://localhost:4000/users/update-avatar?userID=${userAuthID}`, { 
+        fetch(`http://${URL}:${PORT}/users/update-avatar?userID=${userAuthID}`, { 
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username, url }),
@@ -79,16 +58,18 @@ export default function Profile(props) {
     }
   }
 
-  /* useEffect(() => {
-    getUser()
-  }, [avatar]) */
+  useEffect(() => {
+    const fetchUser = async () => {
+      await getUser()
+    }
+    fetchUser()
+  })
 
   return (
     <>
       <Nav />
       <h1>Profile of {username}</h1>
       <div>
-        <button onClick={() => getCookies()}>get cookie</button>
         <h4>Upload profile photo</h4>
         <input
           type="file"
@@ -98,8 +79,8 @@ export default function Profile(props) {
         />
 
         { 
-          user && user.avatar ?
-            <img src={user.avatar} alt="Profile Photo" style={{width: '100px', height: '100px'}}/>
+          user && userProfile ?
+            <img src={userProfile.avatar} alt="Profile Photo" style={{width: '100px', height: '100px'}}/>
             : 
             ""
         }      

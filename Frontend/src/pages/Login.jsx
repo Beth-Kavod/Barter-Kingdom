@@ -5,16 +5,17 @@ import { URL, PORT } from '../../data/URL.json'
 import Nav from '../components/Nav'
 import Footer from '../components/Footer'
 
-export default function Login() {
+const Login = ({ connectWallet, logout, user, wallet }) => {
   const navigate = useNavigate()
-
-  const [userInfo, setUserInfo] = useState({
+  console.log(`Login props`)
+  console.log(wallet)
+  const [userCredentials, setUserCredentials] = useState({
     username: "",
     password: ""
   })
 
   const inputsHandler = (e) => {
-    setUserInfo(prev => ({
+    setUserCredentials(prev => ({
       ...prev,
       [e.target.name]: e.target.value
     }))
@@ -23,36 +24,39 @@ export default function Login() {
   const onSubmit = async (e) => {
     e.preventDefault()
 
-    const response = await fetch(`${URL}:${PORT}/users/login`, {
+    const response = await fetch(`${URL}:${PORT}/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type" : "application/json",
         "Accept": "*/*"
       },
-      body: JSON.stringify(userInfo),
+      body: JSON.stringify(userCredentials),
       credentials: 'include'  // Include credentials (cookies)
     })  
     
     const data = await response.json()
 
-    if (response.status === 403) {
-      window.alert('bad stuff, no good for login')
-      return false
-    } else if (response.status === 200) {
+    if (data.success) {
       console.log('very good, goood boy. you are now logged on')
       navigate('/')
       return true
-    }
-
+    } else if (response.status === 401) {
+      window.alert('bad stuff, no good for login')
+      return false
+    } else if (response.status === 500) {
+      window.alert(`Something broke 💀, error: ${data.message}`)
+    } 
   }
 
 
   return (
     <>
-      <Nav />
+      <Nav logout={logout} user={user} />
+      <button onClick={logout}>Logout</button>
       <h1>Login</h1>
-      {/* i dont think it is necessary to have this page */}
-      {/* <button onClick={connectWallet}></button> */}
+      <button onClick={connectWallet}>Connect Wallet</button>
+      <h4>Wallet Address: {}</h4>
+      {/* <button onClick={logout}>Logout</button> */}
 
       <form action="">
         <div className="mb-4">
@@ -79,3 +83,6 @@ export default function Login() {
     </>
   )
 }
+
+
+export default Login

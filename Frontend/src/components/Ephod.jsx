@@ -9,8 +9,8 @@ export default function Ephod() {
       <Link className="w-[140px] h-[110px] left-[23px] top-[155px] absolute bg-amber-500 rounded-[5px] text-black flex items-center justify-center" to='./Gad'>Gad</Link>
       <Link className="w-[140px] h-[110px] left-[186px] top-[155px] absolute bg-teal-300 rounded-[5px] text-black flex items-center justify-center" to='./Naphtali'>Naphtali</Link>
       <Link className="w-[140px] h-[110px] left-[349px] top-[155px] absolute bg-orange-900 rounded-[5px] text-black flex items-center justify-center" to='./Dan'>Dan</Link>
-      <Link className="w-[140px] h-[110px] left-[23px] top-[287px] absolute bg-gray-500 rounded-[5px] text-black flex items-center justify-center" to='./Levi'>Levi</Link>
-      <Link className="w-[140px] h-[110px] left-[186px] top-[287px] absolute bg-indigo-800 rounded-[5px] text-black flex items-center justify-center" to='./Simeon'>Simeon</Link>
+      <Link className="w-[140px] h-[110px] left-[23px] top-[287px] absolute bg-gray-500 rounded-[5px] text-black flex items-center justify-center" style={{backgroundColor: "#6D4B8F"}} to='./Levi'>Levi</Link>
+      <Link className="w-[140px] h-[110px] left-[186px] top-[287px] absolute bg-indigo-800 rounded-[5px] text-black flex items-center justify-center" style={{backgroundColor: "#4F8129"}} to='./Simeon'>Simeon</Link>
       <Link className="w-[140px] h-[110px] left-[349px] top-[287px] absolute bg-indigo-800 rounded-[5px] text-black flex items-center justify-center" to='./Reuben'>Reuben</Link>
       <Link className="w-[140px] h-[110px] left-[23px] top-[419px] absolute bg-red-500 rounded-[5px] text-black flex items-center justify-center" to='./Benjamin'>Benjamin</Link>
       <Link className="w-[140px] h-[110px] left-[186px] top-[419px] absolute bg-stone-100 rounded-[5px] text-black flex items-center justify-center" to='./Joseph'>Joseph</Link>

@@ -1,9 +1,10 @@
 **TODO**
-- *Fix cookie Auth*
-- Update all Post routes to work AFTER fixing DB connections 
+- <span style="color:red"><b>FIX PROFILE PAGE</b><span>
+- Fix profile Link to go to own profile
 - make Metamask connection localhost and disconnect 
 - make chat app
 - add user info to the database (name, email)
+- add update profile to frontend
 
 ***Stones of Israel***
 
@@ -21,6 +22,9 @@
 - Zebulon - Chrysoprase - #61CC97
 
 **Updates**
+- Fixed login and register
+- Fixed cookie Auth
+- Updated all Post routes to work 
 - Fixed ALL user routes to work with new DB
 - Fixed user signup and login
 - Made tribe Ephod

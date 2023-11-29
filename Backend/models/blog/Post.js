@@ -20,7 +20,7 @@ let postSchema = new Schema({
 const Post = blogDB.model('Post', postSchema)
 
 blogDB.once('open', () => {
-    console.log('Connected to blogDB')
+    console.log('Connected to blogDB for post')
 })
 
 

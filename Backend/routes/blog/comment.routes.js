@@ -2,16 +2,12 @@ const express = require('express')
 const router = express.Router()
 const filter = require('leo-profanity')
 
-let { countVotes, isValid_id, getUserWithID } = require("../routeMethods.js")
-
-/* --------------------------- MongodDB Connection -------------------------- */
-
-const blogDB = require('../../connections/blogDB')
+let { isValid_id, getUserWithID } = require("../routeMethods.js")
 
 /* ----------------------------- MongoDB Schemas ---------------------------- */
 
-let postSchema = require("../../models/blog/Post.js")
-let commentSchema = require("../../models/blog/Comment.js")
+let Post = require("../../models/blog/Post.js")
+let Comment = require("../../models/blog/Comment.js")
 
 // All comments start with /comments
 
@@ -20,22 +16,26 @@ let commentSchema = require("../../models/blog/Comment.js")
 router.get("/:id", async (req, res, next) => {
   const postID = req.params.id
 
-  if (!await isValid_id(res, postID, postSchema)) return false
+  if (!await isValid_id(res, postID, Post)) return false
   
   try {
-    await commentSchema
-    .find({
-      postID: postID
-    })
+    await Post
+    .findById(postID)
+    .populate('comments')  
     .then((result) => {
       console.log(result)
       res.status(200).json({
-        data: result.reverse(),
+        success: true,
         message: "Comments successfully fetched",
-        status: 200,
+        data: result.comments
       })
     })
   } catch(err) {
+    res.status(500).json({
+      success: false,
+      message: `An error occurred fetching comment with _id: "${postID}"`,
+      error: err
+    })
     return next(err)
   }
 })
@@ -45,29 +45,43 @@ router.get("/:id", async (req, res, next) => {
 router.post("/create/:id", async (req, res, next) => {
   const postID = req.params.id
 
-  if (!await isValid_id(res, postID, postSchema)) return false
+  if (!await isValid_id(res, postID, Post)) return false
 
   req.body.content = filter.clean(req.body.content);
 
   try {
-    const newComment = await commentSchema.create({
-      ...req.body,
-      postID: postID
-    });
+    const newComment = await Comment.create(
+      { ...req.body, postID: postID }
+    )
 
     // Find the corresponding post and push the new comment to its 'comments' array
-    const post = await postSchema.findByIdAndUpdate(
+    const updatedPost = await Post.findByIdAndUpdate(
       postID,
       { $push: { comments: newComment._id } },
-      { new: true } // This option returns the modified document
+      { new: true }
     );
 
-    res.status(200).json({
+    if (!newComment || !updatedPost) {
+      // If either the comment creation or post update fails, handle the error
+      return res.status(500).json({
+        success: false,
+        message: "Failed to create comment or update post"
+      });
+    }
+
+    // Both comment creation and post update were successful
+    res.status(201).json({
+      success: true,
       message: "Comment successfully created",
-      status: 200,
-      post: post, // Optionally, you can include the updated post in the response
-    });
+      comment: newComment,
+      updatedPost: updatedPost
+    })
   } catch(err) {
+    res.status(500).json({
+      success: false,
+      message: `An error occurred creating comment on post with _id: "${postID}"`,
+      error: err
+    })
     return next(err)
   }
 })
@@ -80,10 +94,10 @@ router.post("/edit/:id", async (req, res, next) => {
 
   const user = await getUserWithID(res, userID)
 
-  if (!await isValid_id(res, commentID, commentSchema)) return false
+  if (!await isValid_id(res, commentID, Comment)) return false  
 
   try {
-    const comment = await commentSchema.findById(commentID)
+    const comment = await Comment.findById(commentID)
 
     if (user.username !== comment.author && !user.admin) {
       res.status(403).json({
@@ -94,16 +108,21 @@ router.post("/edit/:id", async (req, res, next) => {
 
     req.body.content = filter.clean(req.body.content);
 
-    await commentSchema
+    await Comment
     .findByIdAndUpdate(commentID, req.body, { new: true })
     .then(content => {
       res.status(200).json({
+        success: true,
         message: "Comment updated successfully",
-        comment: content,
-        status: 200,
+        comment: content
       })
     })
   } catch(err) {
+    res.status(500).json({
+      success: false,
+      message: `An error occurred editing comment with _id: "${commentID}"`,
+      error: err
+    })
     return next(err)
   }
 })
@@ -116,10 +135,10 @@ router.post("/delete/:id", async (req, res, next) => {
 
   const user = await getUserWithID(res, userID)
 
-  if (!await isValid_id(res, commentID, commentSchema)) return false
+  if (!await isValid_id(res, commentID, Comment)) return false
   
   try {
-    const comment = await commentSchema.findById(commentID)
+    const comment = await Comment.findById(commentID)
 
     if (user.username !== comment.author && !user.admin) {
       res.status(403).json({
@@ -128,13 +147,18 @@ router.post("/delete/:id", async (req, res, next) => {
       return false
     }
 
-    await commentSchema.findByIdAndDelete(commentID)
+    await Comment.findByIdAndDelete(commentID)
 
     res.status(204).json({
-      message: "Comment and votes successfully Deleted",
-      status: 200,
+      success: true,
+      message: "Comment and votes successfully Deleted"
     })
   } catch(err) {
+    res.status(500).json({
+      success: false,
+      message: `An error occurred deleting comment with _id: "${commentID}"`,
+      error: err
+    })
     return next(err)
   }
 })

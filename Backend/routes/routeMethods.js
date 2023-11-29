@@ -1,3 +1,5 @@
+const bcrypt = require('bcryptjs') 
+
 /* ----------------------------- MongoDB Schemas ---------------------------- */
 
 const Post = require('../models/blog/Post')
@@ -73,9 +75,9 @@ async function isDuplicate(req, res, id, author) {
 
     if (existingVote) {
       res.status(200).json({
+        success: true,
         message: `Vote successfully updated`,
-        voteCount: updatedDoc.voteCount,
-        status: 200
+        voteCount: updatedDoc.voteCount
       })
       return true
     }
@@ -84,24 +86,26 @@ async function isDuplicate(req, res, id, author) {
   } catch (error) {
     console.error(error);
     return res.status(500).json({
+      success: false,
       message: 'An error occurred in function isDuplicate',
       error: error
     });
   }
 }
 
-/* -------------------------- Check if post exists -------------------------- */
+/* -------------------------- Check if document exists -------------------------- */
 
 async function isValid_id(res, id, schema) {
   try {
-    const post = await schema.findById(id);
-    if (!post) throw new Error;
+    const document = await schema.findById(id);
+    if (!document) throw new Error;
     return true;
   } 
   catch (error) {
     res.status(404).json({
-      id: id,
-      message: `Post with _id: ${id} not found`
+      success: false,
+      message: `Document with ID ${id} not found in ${schema.modelName} collection`,
+      id: id
     });
     return false;
   }
@@ -117,13 +121,50 @@ async function getUserWithID(res, userID) {
   }
   catch (error) {
     res.status(404).json({
-      userID: userID,
-      message: `User with userAuthID: ${userID} not found`
+      success: false,
+      message: `User with userAuthID: ${userID} not found`,
+      userID: userID
     });
     return false;
   }
 }
 
+/* ----------------- Generate userAuthID on account creation ---------------- */
+
+function generateUserAuthID() {
+  const getRandomChar = () => {
+    const characters = '0123456789ABCDEF';
+    const randomIndex = Math.floor(Math.random() * characters.length);
+    return characters[randomIndex];
+  };
+
+  const generateBlock = () => {
+    let block = '';
+    for (let i = 0; i < 6; i++) {
+      block += getRandomChar();
+    }
+    return block;
+  };
+
+  return `${generateBlock()}-${generateBlock()}-${generateBlock()}-${generateBlock()}-${generateBlock()}-${generateBlock()}`;
+}
+
+/* -------------------- Hash password on account creation ------------------- */
+
+async function hashPassword(password) {
+  try {
+    // Generate a salt
+    const salt = await bcrypt.genSalt(10);
+
+    // Hash the password using the generated salt
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    return hashedPassword;
+  } catch (error) {
+    throw error;
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 
-module.exports = { countVotes, isValid_id, isDuplicate, getUserWithID }
+module.exports = { countVotes, isValid_id, isDuplicate, getUserWithID, generateUserAuthID, hashPassword }

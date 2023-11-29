@@ -25,7 +25,8 @@ const voteRoute = require('./routes/blog/vote.routes')
 
 /* ------------------------------- User routes ------------------------------ */
 
-const userRoute = require('./routes/user.routes')
+const authRoute = require('./routes/user/auth.routes')
+const userRoute = require('./routes/user/user.routes')
 
 /* --------------------------- cloudinary Config ---------------------------- */
 
@@ -37,6 +38,8 @@ cloudinary.config({
 });
 
 /* ----------------------------- Add middleware ----------------------------- */
+
+const authMiddleware = require('./middleware/authMiddleware')
 
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*")
@@ -69,12 +72,14 @@ const io = socketIo(server); */
 
 /* ------------------------------- App routes ------------------------------- */
 
+app.use('/auth', authRoute)
 app.use('/posts', postRoute)
 app.use('/users', userRoute)
 app.use('/comments', commentRoute)
 app.use('/votes', voteRoute)
 app.use('/metamask', MetaMaskAPI)
 
+app.post('/', authMiddleware)
 
 /* ----------------------------- Error handling ----------------------------- */
 
