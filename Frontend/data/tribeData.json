@@ -1,0 +1,14 @@
+[
+  { "name": "Benjamin", "gemstone": "Sardonyx", "color": "#e64441", "gift": "my sorrow (soul, prophecy)" },
+  { "name": "Joseph", "gemstone": "Beryl", "color": "#F6F6F2", "gift": "He will add (bone marrow, healing)" },
+  { "name": "Levi", "gemstone": "Amethyst", "color": "#6D4B8F", "gift": "Attached (priesthood or embilical cord to God, Teaching)" },
+  { "name": "Gad", "gemstone": "Jasper", "color": "#7F2819", "gift": "Troop/fortune (feet, evangelism)" },
+  { "name": "Asher", "gemstone": "Chrysolite", "color": "#8e9849", "gift": "happy (heart, love)" },
+  { "name": "Reuben", "gemstone": "Lapis Lazuli", "color": "#303698", "gift": "See a son (eyes of God, discernment of Spirits)" },
+  { "name": "Naphtali", "gemstone": "Chalcedony", "color": "#c8ad7f", "gift": "wrestlings (arms, miracles )" },
+  { "name": "Dan", "gemstone": "Onyx", "color": "#2C282C", "gift": "Judge (mind, Wisdom)" },
+  { "name": "Judah", "gemstone": "Sard", "color": "#D92121", "gift": " Praise (voice or spirit of God, tongues)" },
+  { "name": "Simeon", "gemstone": "Emerald", "color": "#4F8129", "gift": "Heard (ears of God, knowledge )" },
+  { "name": "Issachar", "gemstone": "Topaz", "color": "#E0A354", "gift": "wages (blood, faith)" },
+  { "name": "Zebulon", "gemstone": "Chrysoprase", "color": "#61CC97", "gift": "dwelling (skin, hospitality)" }
+]

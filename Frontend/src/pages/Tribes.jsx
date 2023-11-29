@@ -6,6 +6,7 @@ export default function Tribes() {
   return (
     <>
       <Nav />
+      <h1>Tribes</h1>
       <Ephod />
     </>
   )

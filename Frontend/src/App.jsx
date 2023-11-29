@@ -172,8 +172,8 @@ function App() {
         <Route path="/" element={<Home props={{user}}/>} />
         <Route path="/login" element={<Login connectWallet={connectWallet} logout={logout} user={user} wallet={{walletBalance, Wallet_Address}} />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/Tribes" element={<Tribes />} />
-        <Route path="/Tribes/:Tribe" element={<SingleTribe />} />
+        <Route path="/tribes" element={<Tribes />} />
+        <Route path="/tribes/:Tribe" element={<SingleTribe />} />
         <Route path="/profile/:username" element={<Profile props={{user}} />} />
         {/* <Route path="/accounts/create" element={<CreateAccountPage />} />
         <Route path="/accounts/profile/:username" element={<ProfilePage />} />
