@@ -21,12 +21,16 @@ const tribes = [
 
 const userSchema = new Schema({
   /* -------------- Undo comments when finished with development -------------- */
-  username: { type: String, unique: true, required: true, trim: true },
+  username: { type: String, unique: true, trim: true, required: true },
   password: { type: String, required: true },
   email: { type: String, unique: true, required: false, default: "" },
   avatar: { type: String, required: false },
   tags: { type: Array, required: false },
   bio: { type: String, required: false },
+  following: [{ type: Schema.Types.ObjectId, ref: 'User', required: false }],
+  followers: [{ type: Schema.Types.ObjectId, ref: 'User', required: false }],
+  followingCount: { type: Number, required: true },
+  followerCount: { type: Number, required: true },
   admin: { type: Boolean, required: true },
   userAuthID: { type: String, required: true },
   walletAddress: { type: String, unique: false, required: true }, //make unique true when posted

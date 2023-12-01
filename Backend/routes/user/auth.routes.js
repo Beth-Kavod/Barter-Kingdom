@@ -14,7 +14,7 @@ const { SECRET_KEY } = process.env
 /* --------------------------- Register a new user -------------------------- */
 
 Router.post('/register', async (req, res, next) => {
-  let {username, password, email, tribe, walletAddress } = req.body
+  let { username, password, email, tribe, walletAddress } = req.body
   let hashedPassword, token 
 
   try {
@@ -34,6 +34,10 @@ Router.post('/register', async (req, res, next) => {
       walletAddress: walletAddress,
       tribe: tribe,
       admin: false,
+      followers: [],
+      following: [],
+      followerCount: 0,
+      followingCount: 0,
       bio: "",
       avatar: ""
     })
@@ -95,15 +99,13 @@ Router.post('/login', async (req, res, next) => {
           })
         }
 
-        const { username, userAuthID, walletAddress, avatar, tribe } = user
-
         const payload = { 
           username, 
           userAuthID, 
           walletAddress, 
           avatar, 
           tribe
-        }
+        } = user
         
         let token = jwt.sign(payload, SECRET_KEY, {
           expiresIn: '1d'

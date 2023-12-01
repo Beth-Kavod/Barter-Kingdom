@@ -7,18 +7,23 @@ import { URL, PORT } from '../../data/URL'
 
 export default function Profile({user}) {
   const { username } = useParams()
-  const [userProfile, setUserProfile] = useState()
-  // const [avatar, setAvatar] = useState(user.avatar)
-  const [userAuthID, setUserAuthID] = useState()
+  const [userProfile, setUserProfile] = useState({
+    username: "",
+    avatar: "",
+    bio: "",
+    followersCount: "",
+  })
+  const [avatar, setAvatar] = useState()
+  const [userAuthID, setUserAuthID] = useState("")
   console.log(user)
   /* ------------------------------ Get user data ----------------------------- */
 
-  const getUser = async () => {                                //! TEMP NAME     
-    const userData = await fetch(`${URL}:${PORT}/users/profile/${username}/* ?userID=${userAuthID} */`)
+  const getUser = async () => {    
+    const userData = await fetch(`${URL}:${PORT}/users/profile/${username}?userID=${userAuthID}`)
     const data = await userData.json()
-
+    console.log(data)
     setUserProfile(data.user)
-
+    setAvatar(data.user.avatar)
   }
 
   const updateAvatar = async (event) => {
@@ -27,11 +32,13 @@ export default function Profile({user}) {
     formData.append("file", imageFile);
     formData.append("upload_preset", "Avatar");
 
+    let date = new Date()
+
     // ! ADD FILE NAME LATER
-    // const customFileName = `${user.username}-${Date.now().toString}-${user.createdAt}`
+    const customFileName = `${user.username}-${date.toLocaleDateString()}`
 
     const response = await fetch(
-        `https://api.cloudinary.com/v1_1/djez6nvh7/image/upload/`,
+        `https://api.cloudinary.com/v1_1/djez6nvh7/image/upload/?public_id=${customFileName}`,
         {
             method: "POST",
             body: formData,
@@ -63,12 +70,13 @@ export default function Profile({user}) {
       await getUser()
     }
     fetchUser()
-  })
+  }, [user])
 
   return (
     <>
-      <Nav />
+      <Nav user={user} />
       <h1>Profile of {username}</h1>
+      <h3>Bio: {userProfile.bio}</h3>
       <div>
         <h4>Upload profile photo</h4>
         <input
@@ -79,10 +87,10 @@ export default function Profile({user}) {
         />
 
         { 
-          user && userProfile ?
-            <img src={userProfile.avatar} alt="Profile Photo" style={{width: '100px', height: '100px'}}/>
-            : 
-            ""
+          userProfile ?
+          <img src={avatar} alt="Profile Photo" style={{width: '200px', height: '200px'}}/>
+          : 
+          ""
         }      
       </div>
       <Footer />

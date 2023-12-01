@@ -7,10 +7,7 @@ const jwt = require('jsonwebtoken')
 const { createSecretToken } = require("../../util/secretToken.js")
 require('dotenv').config()
 
-
-const secretKey = process.env.SECRET_KEY
-
-const { getUserWithID, hashPassword, generateUserAuthID } = require('../routeMethods.js')
+const { getUserWithID, getIdWithName } = require('../routeMethods.js')
 
 const availableTags = require('../../data/tags')
 
@@ -26,11 +23,9 @@ router.get("/", async (req, res, next) => {
   const userID = req.query.userID
   let user
 
-  if (!userID) {
-    user = { username: "newUser", id: "", admin: false }
-  } else {
-    user = await getUserWithID(res, userID)
-  }
+  if (!userID) user = { username: "newUser", id: "", admin: false }
+
+  else user = await getUserWithID(res, userID)
 
   try {
     await User
@@ -59,7 +54,8 @@ router.get("/", async (req, res, next) => {
     res.status(500).json({
       success: false,
       message: `An error occurred fetching all users`,
-      error: err.message
+      errorMessage: err.message,
+      error: err
     })
     return next(err)
   }
@@ -74,11 +70,9 @@ router.get("/search/:query", async (req, res, next) => {
 
   const regexQuery = new RegExp(query, 'i')
 
-  if (!userID) {
-    user = { username: "newUser", id: "", admin: false }
-  } else {
-    user = await getUserWithID(res, userID)
-  }
+  if (!userID) user = { username: "newUser", id: "", admin: false }
+  
+  else user = await getUserWithID(res, userID)
 
   try {
     await User
@@ -122,187 +116,157 @@ router.get("/search/:query", async (req, res, next) => {
     res.status(500).json({
       success: false,
       message: `An error occurred fetching users with query "${query}"`,
-      error: err.message
+      errorMessage: err.message,
+      error: err
     })
     return next(err)
   }
 })
 
-/* ----------------- Send username and password through form ---------------- */
-//! MOVED TO AUTH
-/* router.post("/create", async (req, res, next) => {
-  let {username, password, email, tribe, walletAddress } = req.body
-  let hashedPassword 
+/* ------------------------------ Follow a user ----------------------------- */
 
-  try {
-    try {
-      hashedPassword = await hashPassword(password);
-    } catch (error) {
-      console.error('Error hashing password', error);
-    }
+router.post('/follow/:followerName', async (req, res) => {
+  const followerName = req.params.followerName
+  const userID = req.query.userID
 
-    const userAuthID = generateUserAuthID();
-
-    const data = await User.create({
-      username: username, 
-      email: email || "",
-      password: hashedPassword,
-      userAuthID: userAuthID, 
-      walletAddress: walletAddress,
-      tribe: tribe,
-      admin: false,
-      bio: "",
-      avatar: ""
-    })
-    
-    res.status(201).json({
-      success: true,
-      message: `Creation of user "${username}" successful`,
-      user: data
-    })
-
-    return true
-
-  } catch(err) {
-    res.status(500).json({
-      success: false,
-      message: `An error occurred creating user`,
-      error: err.message
-    })
-    return next(err)
-  }
-}) */
-
-
-/* ----------------- Send username and password through form ---------------- */
-//! MOVED TO AUTH
-/* router.post("/login", async (req, res, next) => {
-  let { username, password } = req.body
+  if (!userID) return res.status(401).json({
+    success: false,
+    message: "You must be signed in and authenticated to follow someone"
+  }) 
   
-  try {
-    const user = await User.findOne({ username: username })
+  try {  
+    const requestingUser = await getUserWithID(res, userID)
+    if (!requestingUser) return false
+    
+    const receivingUser_id = await getIdWithName(res, followerName)
+    if (!receivingUser_id) return false
 
-    let passwordMatch = false
-
-    if (user) {
-      passwordMatch = await bcrypt.compare(password, user.password)
-    }
-
-    if (passwordMatch) {
-      // Create a JWT
-      try {
-        const payload = { userAuthID: user.userAuthID }
-        
-        const token = createSecretToken(payload)
-
-        res.cookie('userAuthID', token, {
-          withCredentials: true,
-          httpOnly: true,
-          sameSite: true
-        })
-
-        res.status(200).json({ 
-          success: true, 
-          message: `User "${user.username}" successfully logged in`,
-          userAuthID: token 
-        })
-        
-      } catch(err) {
-        throw new Error("Error signing the token")
-      }
-    } else {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Invalid credentials' 
+    if (requestingUser.username === followerName ) {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot follow yourself'
       })
     }
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: `An error occurred logging in "${username}"`,
-      error: err.message
-    })
-    return next(err)
-  }
-})*/
+  
+    const isAlreadyFollowing = requestingUser.following.includes(receivingUser_id)
 
-/* ------------------- Logout of account and delete cookie ------------------ */
-//! MOVED TO AUTH
-/* router.get('/logout', (req, res, next) => {
-  try {
-    if (!req.cookies.userAuthID) return res.status(400).json({
-      success: false, 
-      message: 'User not logged in'
-    }) 
-
-    res.clearCookie('userAuthID')
+    if (!isAlreadyFollowing) {
+      // Update self with new follower
+      await User
+      .findOneAndUpdate(
+        { _id: requestingUser._id }, 
+        { 
+          $push: { following: receivingUser_id },
+          $inc: { followingCount: 1 }
+        }, 
+        { new: true }
+      )
+      // Update person you are following
+      await User
+        .findOneAndUpdate(
+          { username: followerName },
+          { 
+            $push: { followers: requestingUser._id },
+            $inc: { followerCount: 1 }
+          },
+          { new: true }
+        )
+    } else {
+      return res.status(200).json({
+        success: true,
+        message: `User ${requestingUser.username} is already following ${followerName}, nothing has been updated`
+      })
+    }
+          
     res.status(200).json({
       success: true,
-      message: `User logged out`
+      message: `${requestingUser.username} is now following ${followerName}`
     })
-
-    res.redirect('/');
   } catch (err) {
     res.status(500).json({
       success: false,
-      message: `Something went wrong logging out`,
-      error: err.message
+      message: `Something went wrong following user: ${followerName}`,
+      errorMessage: err.message,
+      error: err
     })
     return next(err)
   }
-}); */
+})
 
-/* ---------------- Verify cookies to check logged in status ---------------- */
-//! MOVED TO AUTH
-/* router.post('/protected', (req, res) => {
-  try {
-    const token = req.cookies.userAuthID;
+/* ----------------------------- Unfollow a user ---------------------------- */
+
+router.post('/unfollow/:followerName', async (req, res) => {
+  const followerName = req.params.followerName
+  const userID = req.query.userID
+
+  if (!userID) return res.status(401).json({
+    success: false,
+    message: "You must be signed in and authenticated to unfollow someone"
+  }) 
+
+  try {  
+    const requestingUser = await getUserWithID(res, userID)
+    if (!requestingUser) return false
     
-    // Check if the user is authenticated
-    if (token === undefined || token === null) {
-      return res.status(400).json({ success: false, message: 'No cookie found' });
-    }
+    const receivingUser_id = await getIdWithName(res, followerName)
+    if (!receivingUser_id) return false
+  
+    const isAlreadyFollowing = requestingUser.following.includes(receivingUser_id)
 
-    try {
-      // Verify the JWT
-      const decoded = jwt.verify(token, secretKey);
-      // The JWT is valid, and the user is authenticated
-      res.status(200).json({ 
-        success: true, 
-        message: `User authenticated`,
-        userAuthID: decoded.userAuthID 
-      });
-    } catch (err) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Unauthorized', 
-        error: err.message
-      });
+    if (isAlreadyFollowing) {
+      await Promise.all([   
+        // Update self with new follower
+        await User
+        .findOneAndUpdate(
+          { _id: requestingUser._id }, 
+          { 
+            $pull: { following: receivingUser_id },
+            $inc: { followingCount: - 1 }
+          }, 
+          { new: true }
+        ),
+        // Update person you are following
+        await User
+          .findOneAndUpdate(
+            { username: followerName },
+            {
+              $pull: { followers: requestingUser._id },
+              $inc: { followerCount: - 1 }
+            },
+            { new: true }
+          )
+      ])
+    } else {
+      return res.status(200).json({
+        success: true,
+        message: `User ${requestingUser.username} is not following ${followerName}, nothing has been updated`
+      })
     }
+          
+    res.status(200).json({
+      success: true,
+      message: `${requestingUser.username} has unfollowed ${followerName}`
+    })
   } catch (err) {
     res.status(500).json({
       success: false,
-      message: `Something went wrong in retrieving cookies`,
-      error: err.message
+      message: `Something went wrong unfollowing user: ${followerName}`,
+      errorMessage: err.message,
+      error: err
     })
     return next(err)
   }
-}); */
+})
 
 /* ----------------------- Get users profile with name ---------------------- */
 
 router.get("/profile/:name", async (req, res, next) => {
   const name = req.params.name
   const userID = req.query.userID
-  let request
-
-  if (!userID) {
-    request = { username: "", id: "", admin: false} 
-  } else {
-    request = await getUserWithID(res, userID)
-  }
 
   try {
+    let requestingUser = userID ? await getUserWithID(res, userID) : { username: "", id: "", admin: false} 
+  
     await User
       .findOne({username: name})
       .then(user => {
@@ -313,9 +277,17 @@ router.get("/profile/:name", async (req, res, next) => {
           })
         }
 
-        const { username, admin, avatar, createdAt } = user
+        const userData = { 
+          username, 
+          admin, 
+          avatar, 
+          createdAt, 
+          bio, 
+          followers, 
+          following
+        } = user
 
-        if (request.username === name || request.admin) {
+        if (requestingUser.username === name || requestingUser.admin) {
           return res.status(200).json({
             success: true,
             message: `User ${user.username} found`,
@@ -326,19 +298,18 @@ router.get("/profile/:name", async (req, res, next) => {
             success: true,
             message: `User ${user.username} found`, 
             user: {
-              username,
-              admin, 
-              avatar, 
-              createdAt,
-            },
+              ...userData,
+              followersCount: followers.length
+            }
           })
         }
       }) 
   } catch(err) {
     res.status(500).json({
       success: false,
-      message: `An error occurred fetching "${username}"'s profile`,
-      error: err.message
+      message: `An error occurred fetching profile`,
+      errorMessage: err.message,
+      error: err
     })
     return next(err)
   }
@@ -362,7 +333,8 @@ router.post("/update-avatar", async (req, res, next) => {
       return res.status(500).json({
         success: false,
         message: `Error deleting profile photo`,
-        error: err.message
+        errorMessage: err.message,
+        error: err
       })
     }
   }
@@ -401,7 +373,8 @@ router.post("/update-avatar", async (req, res, next) => {
     res.status(500).json({
       success: false,
       message: `An error occurred updating "${username}"'s avatar`,
-      error: err.message
+      errorMessage: err.message,
+      error: err
     })
     return next(err);
   }
@@ -445,7 +418,8 @@ router.post("/update-profile/:name", async (req, res, next) => {
     res.status(500).json({
       success: false,
       message: `An error occurred updating "${name}"'s profile`,
-      error: err.message
+      errorMessage: err.message,
+      error: err
     })
     return next(err)
   }
@@ -498,7 +472,8 @@ router.post("/add-tags/:name", async (req, res, next) => {
     res.status(500).json({
       success: false,
       message: `An error occurred adding tags to user "${username}"`,
-      error: err.message
+      errorMessage: err.message,
+      error: err
     })
     return next(err)
   }
@@ -563,7 +538,8 @@ router.post("/remove-tags/:name", async (req, res, next) => {
     res.status(500).json({
       success: false,
       message: `An error occurred removing tags from user "${username}"`,
-      error: err.message
+      errorMessage: err.message,
+      error: err
     })
     return next(err)
   }
@@ -612,16 +588,17 @@ router.post("/make-admin/:id", async (req, res, next) => {
         let message =  admin ? `User ${user.username} found and given admin` : `User ${user.username} found and revoked admin`
         res.status(200).json({
           success: true,
+          message: message,
           name: user.username, 
-          id: user._id, 
-          message: message
+          id: user._id
         })
       }) 
   } catch (err) {
     res.status(500).json({
       success: false,
       message: `An error occurred changing user "${username}"'s admin status`,
-      error: err.message
+      errorMessage: err.message,
+      error: err
     })
     return next(err)
   }
@@ -662,7 +639,8 @@ router.post("/delete/:userAuthID", async (req, res, next) => {
     res.status(500).json({
       success: false,
       message: 'Something went wrong when deleting user',
-      error: err.message
+      errorMessage: err.message,
+      error: err
     })
     return next(err)
   }

@@ -7,14 +7,14 @@ import Footer from '../components/Footer'
 // Stone source: https://johnpratt.com/items/docs/lds/meridian/2005/12stones.html#2.2
 import tribeData from '../../data/tribeData.json'
 
-export default function SingleTribe() {
+export default function SingleTribe({ user }) {
   const { Tribe } = useParams();
   const getTribe = tribeData.find(tribe => tribe.name === Tribe)
   
 
   return (
     <>
-      <Nav />
+      <Nav  user={user} />
       <div>
         <h1>Tribe: {Tribe}</h1>
         <h1>Gift: {getTribe.gift}</h1>

@@ -110,7 +110,7 @@ export default function Signup(props) {
   const onSubmit = async (e) => {
     e.preventDefault()
     try {
-      const response = await fetch(`${URL}:${PORT}/users/create`, {
+      const response = await fetch(`${URL}:${PORT}/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -134,7 +134,7 @@ export default function Signup(props) {
   
   return (
     <>
-      <Nav />
+      <Nav  user={user} />
 
       <form style={{width: "400px"}} className="mx-auto p-4 bg-white rounded shadow-md">
         <div className="mb-4">
