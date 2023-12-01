@@ -2,7 +2,7 @@ const express = require('express')
 const router = express.Router()
 const filter = require('leo-profanity')
 
-let { isValid_id, getUserWithID } = require("../routeMethods.js")
+let { isValid_id, getUserWithID, createResponse } = require("../routeMethods.js")
 
 /* ----------------------------- MongoDB Schemas ---------------------------- */
 

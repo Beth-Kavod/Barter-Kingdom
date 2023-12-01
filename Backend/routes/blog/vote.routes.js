@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 
-let { getUserWithID, countVotes, isValid_id, isDuplicate } = require("../routeMethods.js")
+let { getUserWithID, countVotes, isValid_id, isDuplicate, createResponse } = require("../routeMethods.js")
 
 /* ----------------------------- MongoDB Schemas ---------------------------- */
 

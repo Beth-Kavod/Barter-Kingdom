@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken')
 const User = require('../../models/user/User')
 
 // const authMiddleware = require('../../middleware/authMiddleware')
-const { getUserWithID, hashPassword, generateUserAuthID } = require('../routeMethods.js')
+const { getUserWithID, hashPassword, generateUserAuthID, createResponse } = require('../routeMethods.js')
 
 const { SECRET_KEY } = process.env
 
