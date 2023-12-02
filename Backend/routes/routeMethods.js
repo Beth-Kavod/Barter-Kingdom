@@ -72,6 +72,7 @@ async function isDuplicate(req, res, id, author) {
     return res.status(500).json({
       success: false,
       message: 'An error occurred in function isDuplicate',
+      errorMessage: err.message,
       error: err
     })
   }
@@ -82,13 +83,13 @@ async function isDuplicate(req, res, id, author) {
 async function isValid_id(res, id, schema) {
   try {
     const document = await schema.findById(id)
-    if (!document) throw new Error
+    if (!document) throw new Error(`Document with ID ${id} not found in ${schema.modelName} collection`)
     return true
   } 
   catch (err) {
     res.status(404).json({
       success: false,
-      message: `Document with ID ${id} not found in ${schema.modelName} collection`,
+      message: err.message,
       id: id,
       error: err
     })
@@ -101,17 +102,17 @@ async function isValid_id(res, id, schema) {
 async function getUserWithID(res, userID) {
   try {
     const user = await User.findOne({ userAuthID: userID })
-    if (!user) throw new Error
+    if (!user) throw new Error(`User with userAuthID: ${userID} has not been found`)
     return user
   }
   catch (err) {
     res.status(404).json({
       success: false,
-      message: `User with userAuthID: ${userID} not found`,
+      message: err.message,
       userID: userID,
       error: err
     })
-    return false
+    throw err
   }
 }
 
@@ -120,17 +121,17 @@ async function getUserWithID(res, userID) {
 async function getIdWithName(res, name) {
   try {
     const user = await User.findOne({ username: name })
-    if (!user) throw new Error
+    if (!user) throw new Error(`User with username: ${name} not found`)
     return user._id
   }
   catch (err) {
     res.status(404).json({
       success: false,
-      message: `User with username: ${name} not found`,
+      message: err.message,
       name: name,
       error: err
     })
-    return false
+    throw err
   }
 }
 
@@ -152,6 +153,21 @@ function generateUserAuthID() {
   }
 
   return `${generateBlock()}-${generateBlock()}-${generateBlock()}-${generateBlock()}-${generateBlock()}-${generateBlock()}`
+}
+
+/* ---------------------------- Response objects ---------------------------- */
+
+function createResponse(res, status, success, message, error) {
+ const response = {
+    success,
+    message
+  }
+
+  if (error) {
+    response.error = error
+  }
+
+  return res.status(status).json(response)
 }
 
 /* -------------------- Hash password on account creation ------------------- */
@@ -179,5 +195,6 @@ module.exports = {
   getUserWithID, 
   getIdWithName,
   generateUserAuthID, 
-  hashPassword 
+  hashPassword,
+  createResponse 
 }
