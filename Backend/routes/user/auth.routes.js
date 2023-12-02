@@ -34,10 +34,12 @@ Router.post('/register', async (req, res, next) => {
       walletAddress: walletAddress,
       tribe: tribe,
       admin: false,
-      followers: [],
-      following: [],
-      followerCount: 0,
-      followingCount: 0,
+      follows: {
+        followers: [],
+        following: [],
+        followerCount: followers.length,
+        followingCount: following.length,
+      },
       bio: "",
       avatar: ""
     })
@@ -125,7 +127,8 @@ Router.post('/login', async (req, res, next) => {
     res.status(500).json({
       success: false,
       message: `Error when logging in user`,
-      error: err.message
+      errorMessage: err.message,
+      error: err
     })
     return next(err)
   }

@@ -27,10 +27,12 @@ const userSchema = new Schema({
   avatar: { type: String, required: false },
   tags: { type: Array, required: false },
   bio: { type: String, required: false },
-  following: [{ type: Schema.Types.ObjectId, ref: 'User', required: false }],
-  followers: [{ type: Schema.Types.ObjectId, ref: 'User', required: false }],
-  followingCount: { type: Number, required: true },
-  followerCount: { type: Number, required: true },
+  follows: {
+    following: [{ type: Schema.Types.ObjectId, ref: 'User', required: false }],
+    followers: [{ type: Schema.Types.ObjectId, ref: 'User', required: false }],
+    followingCount: { type: Number, required: true },
+    followerCount: { type: Number, required: true },
+  },
   admin: { type: Boolean, required: true },
   userAuthID: { type: String, required: true },
   walletAddress: { type: String, unique: false, required: true }, //make unique true when posted
@@ -40,6 +42,14 @@ const userSchema = new Schema({
   collection: 'users',
   timestamps: true 
 })
+
+userSchema.pre('save', function (next) {
+  // Calculate the default value based on the current length of 'following' array
+  this.follows.followingCount = this.follows.following.length;
+
+  // Call the next middleware or save the document
+  next();
+});
 
 const User = userDB.model('User', userSchema)
 
