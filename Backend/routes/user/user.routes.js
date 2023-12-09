@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken')
 const { createSecretToken } = require("../../util/secretToken.js")
 require('dotenv').config()
 
-const { getUserWithID, getIdWithName } = require('../routeMethods.js')
+const { getUserWithID, getIdWithName, createResponse } = require('../routeMethods.js')
 
 const availableTags = require('../../data/tags')
 
@@ -21,12 +21,8 @@ const User = require('../../models/user/User.js')
 
 router.get("/", async (req, res, next) => {
   const userID = req.query.userID
-  let user
-
-  if (!userID) user = { username: "newUser", id: "", admin: false }
-
-  else user = await getUserWithID(res, userID)
-
+  let user = userID ? await getUserWithID(res, userID) : { username: "newUser", id: "", admin: false }
+  
   try {
     await User
       .find()
@@ -66,13 +62,9 @@ router.get("/", async (req, res, next) => {
 router.get("/search/:query", async (req, res, next) => {
   const query = req.params.query
   const userID = req.query.userID
-  let user
-
   const regexQuery = new RegExp(query, 'i')
 
-  if (!userID) user = { username: "newUser", id: "", admin: false }
-  
-  else user = await getUserWithID(res, userID)
+  let user = userID ? await getUserWithID(res, userID) : { username: "newUser", id: "", admin: false }
 
   try {
     await User
@@ -136,11 +128,9 @@ router.post('/follow/:followerName', async (req, res) => {
   
   try {  
     const requestingUser = await getUserWithID(res, userID)
-    if (!requestingUser) return false
     
     const receivingUser_id = await getIdWithName(res, followerName)
-    if (!receivingUser_id) return false
-
+    
     if (requestingUser.username === followerName ) {
       return res.status(403).json({
         success: false,
@@ -315,7 +305,6 @@ router.post("/update-avatar/:username", async (req, res, next) => {
   const { url } = req.body;
   const username = req.params.username;
   const userID = req.query.userID || ""
-  let requestingUser
 
   function deletePhoto(url) {
     try {
@@ -388,9 +377,8 @@ router.post("/update-profile/:name", async (req, res, next) => {
   const user = await getUserWithID(res, userID)
   // ! ADD MORE FIELDS LATER
   const { email } = req.body
-
+    
   try {
-
     if (name !== user.username && !user.admin) {
       res.status(403).json({
         success: false,
@@ -434,7 +422,7 @@ router.post("/add-tags/:name", async (req, res, next) => {
   const { newTags }= req.body
 
   const user = await getUserWithID(res, userID)
-
+  
   try {
     if (name !== user.username && !user.admin) {
       return res.status(403).json({
@@ -487,7 +475,7 @@ router.post("/remove-tags/:name", async (req, res, next) => {
   const { removeTags }= req.body
 
   const user = await getUserWithID(res, userID)
-
+  
   try {
     if (name !== user.username && !user.admin) {
       return res.status(403).json({
@@ -559,11 +547,11 @@ router.post("/make-admin/:id", async (req, res, next) => {
   
   if (req.query.admin === null) {
     return res.status(422).json({
-      success: false,
-      message: `Admin query needs to be set as boolean`
-    })
-  }
-
+        success: false,
+        message: `Admin query needs to be set as boolean`
+      })
+    }
+  
   let user = await getUserWithID(res, userID)
 
   if (!user.admin) {
@@ -572,9 +560,8 @@ router.post("/make-admin/:id", async (req, res, next) => {
       message: `User with id: ${userID} not allowed to promote users`
     })
   }
-
+    
   try {
-
     await User
       .findByIdAndUpdate(
         id, 
@@ -610,14 +597,14 @@ router.post("/delete/:userAuthID", async (req, res, next) => {
   const userID = req.query.userID
 
   const requestingUser = await getUserWithID(res, userID)
-
+  
   if (!requestingUser.admin && userID !== userAuthID ) {
     return res.status(403).json({
       success: false,
       message: `User ${requestingUser.username} not allowed to delete another user`
     })
   }
-
+  
   try {
     const response = await User.deleteOne({userAuthID: userAuthID})
 
