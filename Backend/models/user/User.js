@@ -27,10 +27,12 @@ const userSchema = new Schema({
   avatar: { type: String, required: false },
   tags: { type: Array, required: false },
   bio: { type: String, required: false },
-  following: [{ type: Schema.Types.ObjectId, ref: 'User', required: false }],
-  followers: [{ type: Schema.Types.ObjectId, ref: 'User', required: false }],
-  followingCount: { type: Number, required: true },
-  followerCount: { type: Number, required: true },
+  follows: {
+    following: [{ type: Schema.Types.ObjectId, ref: 'User', required: false }],
+    followers: [{ type: Schema.Types.ObjectId, ref: 'User', required: false }],
+    followingCount: { type: Number, default: 0, required: true },
+    followerCount: { type: Number, default: 0, required: true },
+  },
   admin: { type: Boolean, required: true },
   userAuthID: { type: String, required: true },
   walletAddress: { type: String, unique: false, required: true }, //make unique true when posted

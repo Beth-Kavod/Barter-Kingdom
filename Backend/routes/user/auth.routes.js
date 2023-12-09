@@ -34,10 +34,12 @@ Router.post('/register', async (req, res, next) => {
       walletAddress: walletAddress,
       tribe: tribe,
       admin: false,
-      followers: [],
-      following: [],
-      followerCount: 0,
-      followingCount: 0,
+      follows: {
+        followers: [],
+        following: [],
+        followerCount: 0,
+        followingCount: 0,
+      },
       bio: "",
       avatar: ""
     })
@@ -99,15 +101,17 @@ Router.post('/login', async (req, res, next) => {
           })
         }
 
+        let { username, userAuthID, walletAddress, avatar, tribe } = user
+
         const payload = { 
           username, 
           userAuthID, 
           walletAddress, 
           avatar, 
           tribe
-        } = user
+        }
         
-        let token = jwt.sign(payload, SECRET_KEY, {
+        const token = jwt.sign(payload, SECRET_KEY, {
           expiresIn: '1d'
         })
 

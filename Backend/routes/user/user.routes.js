@@ -277,15 +277,9 @@ router.get("/profile/:name", async (req, res, next) => {
           })
         }
 
-        const userData = { 
-          username, 
-          admin, 
-          avatar, 
-          createdAt, 
-          bio, 
-          followers, 
-          following
-        } = user
+        const { username, admin, avatar, createdAt, bio, follows } = user
+
+        const userData = { username, admin, avatar, createdAt, bio, follows }
 
         if (requestingUser.username === name || requestingUser.admin) {
           return res.status(200).json({
@@ -299,7 +293,7 @@ router.get("/profile/:name", async (req, res, next) => {
             message: `User ${user.username} found`, 
             user: {
               ...userData,
-              followersCount: followers.length
+              // followersCount: followers.length
             }
           })
         }
@@ -317,8 +311,9 @@ router.get("/profile/:name", async (req, res, next) => {
 
 /* --------------------------- Update users avatar -------------------------- */
 
-router.post("/update-avatar", async (req, res, next) => {
-  const { username, url } = req.body;
+router.post("/update-avatar/:username", async (req, res, next) => {
+  const { url } = req.body;
+  const username = req.params.username;
   const userID = req.query.userID || ""
   let requestingUser
 
@@ -341,7 +336,11 @@ router.post("/update-avatar", async (req, res, next) => {
 
   try {
     if (!userID) {
-      requestingUser = { username: "guest", id: "", admin: false }
+      deletePhoto(url)
+      return res.status(401).json({
+        success: false,
+        message: "You must be logged in to update your avatar"
+      })
     } else {
       requestingUser = await getUserWithID(res, userID)
     }
